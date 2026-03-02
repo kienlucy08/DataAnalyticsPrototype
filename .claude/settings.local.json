@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm show powerbi-client-react versions --json)",
+      "Bash(npm install)",
+      "Bash(npm show powerbi-client-react@2.0.2 peerDependencies)",
+      "Bash(npx tsc -p tsconfig.app.json --noEmit)"
+    ]
+  }
+}
