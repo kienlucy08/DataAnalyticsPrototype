@@ -1,9 +1,15 @@
 import React from 'react'
-import { Loader2, Wrench } from 'lucide-react'
+import { Loader2, Wrench, LayoutDashboard, Download } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import type { ChartData } from '../../types/dashboard'
+import { useDashboard } from '../../context/DashboardContext'
+import ChartRenderer from '../charts/ChartRenderer'
 
 interface Props {
   activeTools: string[]
   response: string | null
+  chartData?: ChartData | null
+  onSaveChat?: () => void
 }
 
 /** Minimal markdown renderer — handles bold, inline code, tables, and line breaks */
@@ -103,8 +109,17 @@ function TableBlock({ lines }: { lines: string[] }) {
   )
 }
 
-const AnalyticsOutput: React.FC<Props> = ({ activeTools, response }) => {
+const AnalyticsOutput: React.FC<Props> = ({ activeTools, response, chartData, onSaveChat }) => {
+  const { addWidget } = useDashboard()
+  const navigate = useNavigate()
+
   if (activeTools.length === 0 && !response) return null
+
+  const handleAddToDashboard = () => {
+    if (!chartData) return
+    addWidget(chartData)
+    navigate('/dashboard')
+  }
 
   return (
     <div className="w-full mt-4 rounded-xl border border-border bg-card overflow-hidden">
@@ -133,6 +148,44 @@ const AnalyticsOutput: React.FC<Props> = ({ activeTools, response }) => {
             <span className="text-text-muted text-xs font-medium">Analysis</span>
           </div>
           {renderMarkdown(response)}
+        </div>
+      )}
+
+      {/* Inline chart preview */}
+      {chartData && (
+        <div className="px-4 pb-4">
+          <div className="rounded-lg border border-border bg-surface overflow-hidden">
+            <div className="px-3 py-2 border-b border-border">
+              <span className="text-text-secondary text-xs font-medium">{chartData.title}</span>
+            </div>
+            <div className="p-3 h-64">
+              <ChartRenderer widget={chartData} height={220} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      {(chartData || onSaveChat) && (
+        <div className="flex items-center gap-2 px-4 pb-4">
+          {chartData && (
+            <button
+              onClick={handleAddToDashboard}
+              className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover border border-accent/30 hover:border-accent/60 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <LayoutDashboard size={13} />
+              Add to Dashboard
+            </button>
+          )}
+          {onSaveChat && (
+            <button
+              onClick={onSaveChat}
+              className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary border border-border hover:border-border-light px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Download size={13} />
+              Save Chat
+            </button>
+          )}
         </div>
       )}
     </div>

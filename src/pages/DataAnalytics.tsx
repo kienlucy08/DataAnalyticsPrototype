@@ -7,6 +7,7 @@ import ChatInput from '../components/ui/ChatInput'
 import ToolsPanel from '../components/mcp/ToolsPanel'
 import AnalyticsOutput from '../components/mcp/AnalyticsOutput'
 import type { McpStatus, McpTool } from '../types/mcp'
+import type { ChartData } from '../types/dashboard'
 
 const ROLE_LABELS: Record<string, { title: string; description: string }> = {
   admin: {
@@ -23,6 +24,18 @@ const ROLE_LABELS: Record<string, { title: string; description: string }> = {
   },
 }
 
+function parseChartData(text: string): { display: string; chart: ChartData | null } {
+  const marker = '\nCHART_DATA:'
+  const idx = text.lastIndexOf(marker)
+  if (idx === -1) return { display: text, chart: null }
+  try {
+    const chart = JSON.parse(text.slice(idx + marker.length).trim()) as ChartData
+    return { display: text.slice(0, idx).trimEnd(), chart }
+  } catch {
+    return { display: text, chart: null }
+  }
+}
+
 const DataAnalytics: React.FC = () => {
   const { role } = useRole()
   const config = PBI_CONFIGS[role]
@@ -33,6 +46,8 @@ const DataAnalytics: React.FC = () => {
   const [tools, setTools] = useState<McpTool[]>([])
   const [activeTools, setActiveTools] = useState<string[]>([])
   const [response, setResponse] = useState<string | null>(null)
+  const [chartData, setChartData] = useState<ChartData | null>(null)
+  const [lastMessage, setLastMessage] = useState<string>('')
 
   const [retryCount, setRetryCount] = useState(0)
 
@@ -88,7 +103,9 @@ const DataAnalytics: React.FC = () => {
 
   const handleSend = async (message: string) => {
     setResponse(null)
+    setChartData(null)
     setActiveTools([])
+    setLastMessage(message)
 
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -112,7 +129,9 @@ const DataAnalytics: React.FC = () => {
         if (event.type === 'tool_call' && event.tool) {
           setActiveTools(prev => prev.includes(event.tool!) ? prev : [...prev, event.tool!])
         } else if (event.type === 'text' && event.content) {
-          setResponse(event.content)
+          const { display, chart } = parseChartData(event.content)
+          setResponse(display)
+          setChartData(chart)
           setActiveTools([])
         } else if (event.type === 'error') {
           setResponse(`Error: ${event.message ?? 'Unknown error'}`)
@@ -131,11 +150,22 @@ const DataAnalytics: React.FC = () => {
       buffer = done ? '' : (parts.pop() ?? '')
       for (const part of parts) processChunk(part)
       if (done) {
-        // Flush any remaining buffered data after stream closes
         if (buffer.trim()) processChunk(buffer)
         break
       }
     }
+  }
+
+  const handleSaveChat = () => {
+    if (!response) return
+    const content = `Question: ${lastMessage}\n\nAnalysis:\n${response}`
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `fieldsync-analysis-${new Date().toISOString().slice(0, 10)}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -197,7 +227,12 @@ const DataAnalytics: React.FC = () => {
         mcpStatus={mcpStatus}
         onSend={handleSend}
       />
-      <AnalyticsOutput activeTools={activeTools} response={response} />
+      <AnalyticsOutput
+        activeTools={activeTools}
+        response={response}
+        chartData={chartData}
+        onSaveChat={response ? handleSaveChat : undefined}
+      />
     </div>
   )
 }

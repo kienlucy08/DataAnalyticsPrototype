@@ -52,12 +52,13 @@ class McpBridge {
       { capabilities: {} }
     )
 
-    // Schema caching on RDS takes 60-90s before the Python server starts the MCP
-    // event loop. The SDK default is 60s which always times out. Override to 3 min.
-    ;(this.client as unknown as { _requestTimeout: number })._requestTimeout = 180_000
-
-    await this.client.connect(transport)
-    const result = await this.client.listTools()
+    // Schema caching on RDS can take several minutes before the Python server
+    // finishes and starts the MCP event loop. Pass explicit timeout (10 min)
+    // to both connect() and listTools() — the SDK uses options.timeout per-call,
+    // not any instance property.
+    const timeoutMs = 600_000
+    await this.client.connect(transport, { timeout: timeoutMs })
+    const result = await this.client.listTools(undefined, { timeout: timeoutMs })
     this.tools = result.tools as unknown as McpTool[]
   }
 

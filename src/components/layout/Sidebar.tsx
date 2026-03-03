@@ -32,18 +32,27 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Organization',  path: '/organization',  icon: <Building2 size={18} /> },
 ]
 
-const ANALYTICS_ITEM: NavItem = {
-  label: 'Data Analytics',
-  path: '/data-analytics',
-  icon: <BarChart3 size={18} />,
-  roles: ['admin', 'pm', 'technician'],
-}
+const ANALYTICS_ITEMS: NavItem[] = [
+  {
+    label: 'Data Analytics',
+    path: '/data-analytics',
+    icon: <BarChart3 size={18} />,
+    roles: ['admin', 'pm', 'technician'],
+  },
+  {
+    label: 'My Dashboard',
+    path: '/dashboard',
+    icon: <LayoutDashboard size={18} />,
+    roles: ['admin', 'pm', 'technician'],
+  },
+]
 
 const Sidebar: React.FC = () => {
   const { role } = useRole()
 
-  const canSeeAnalytics =
-    !ANALYTICS_ITEM.roles || ANALYTICS_ITEM.roles.includes(role)
+  const canSeeAnalytics = ANALYTICS_ITEMS.some(
+    item => !item.roles || item.roles.includes(role)
+  )
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     [
@@ -90,10 +99,12 @@ const Sidebar: React.FC = () => {
                 Analytics
               </span>
             </div>
-            <NavLink to={ANALYTICS_ITEM.path} className={linkClass}>
-              {ANALYTICS_ITEM.icon}
-              <span>{ANALYTICS_ITEM.label}</span>
-            </NavLink>
+            {ANALYTICS_ITEMS.filter(item => !item.roles || item.roles.includes(role)).map(item => (
+              <NavLink key={item.path} to={item.path} className={linkClass}>
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
           </>
         )}
       </nav>

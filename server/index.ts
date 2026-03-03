@@ -2,7 +2,6 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import Anthropic from '@anthropic-ai/sdk'
-import type { MessageParam } from '@anthropic-ai/sdk/resources/messages.js'
 import { mcpBridge } from './mcp-bridge.js'
 
 const errMsg = (err: unknown) => (err instanceof Error ? err.message : String(err))
@@ -19,7 +18,18 @@ const SYSTEM_PROMPT = `You are a data analyst for FieldSync infrastructure inspe
 You have access to a PostgreSQL database containing tower sites, inspections, deficiencies, \
 and equipment records. Use the available tools to query the database and answer questions \
 accurately. Present findings clearly with specific numbers, summaries, and actionable insights. \
-When showing tabular data, format it as a markdown table.`
+When showing tabular data, format it as a markdown table.
+
+When your response contains data that would be meaningfully visualized as a chart, append \
+exactly one line at the very end of your response in this format (no trailing newline after it):
+CHART_DATA:{"type":"bar","title":"Chart Title","xKey":"fieldName","yKey":"fieldName","data":[{"fieldName":"label","fieldName":123}]}
+Rules:
+- type must be one of: bar, line, area, pie
+- For pie charts use nameKey and valueKey fields instead of xKey/yKey
+- For multi-series bar/line/area, use dataKeys (array of strings) alongside xKey
+- data must be a JSON array of plain objects with consistent keys
+- Only include CHART_DATA when you have actual query results with numeric values worth charting
+- Do not wrap CHART_DATA in a code block — it must be a raw line at the very end`
 
 // GET /api/mcp/status — initialize MCP and return tool list
 app.get('/api/mcp/status', async (_req, res) => {
@@ -55,7 +65,7 @@ app.post('/api/chat', async (req, res) => {
     await mcpBridge.initialize()
     const tools = mcpBridge.getAnthropicTools()
 
-    const messages: MessageParam[] = [{ role: 'user', content: message }]
+    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: message }]
 
     // Agentic loop
     while (true) {
