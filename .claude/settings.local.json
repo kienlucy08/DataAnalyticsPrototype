@@ -4,7 +4,11 @@
       "Bash(npm show powerbi-client-react versions --json)",
       "Bash(npm install)",
       "Bash(npm show powerbi-client-react@2.0.2 peerDependencies)",
-      "Bash(npx tsc -p tsconfig.app.json --noEmit)"
+      "Bash(npx tsc -p tsconfig.app.json --noEmit)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(python -m pip install psycopg2-binary)"
     ]
   }
 }

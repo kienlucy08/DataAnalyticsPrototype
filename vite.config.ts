@@ -6,4 +6,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['powerbi-client', 'powerbi-client-react'],
   },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
+  },
 })
