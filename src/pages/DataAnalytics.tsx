@@ -1,28 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { BarChart3, Loader2, AlertCircle } from 'lucide-react'
-import { useRole } from '../context/RoleContext'
-import { PBI_CONFIGS } from '../config/powerbi.config'
-import PowerBIDashboard from '../components/powerbi/PowerBIDashboard'
 import ChatInput from '../components/ui/ChatInput'
 import ToolsPanel from '../components/mcp/ToolsPanel'
 import AnalyticsOutput from '../components/mcp/AnalyticsOutput'
 import type { McpStatus, McpTool } from '../types/mcp'
 import type { ChartData } from '../types/dashboard'
-
-const ROLE_LABELS: Record<string, { title: string; description: string }> = {
-  admin: {
-    title: 'Admin Analytics Dashboard',
-    description: 'Organization-wide metrics, team performance, and operational overview.',
-  },
-  pm: {
-    title: 'Project Manager Dashboard',
-    description: 'Project status, site progress, and scheduling analytics.',
-  },
-  technician: {
-    title: 'Technician Dashboard',
-    description: 'Assigned work, inspection results, and field activity summary.',
-  },
-}
 
 function parseChartData(text: string): { display: string; chart: ChartData | null } {
   const marker = '\nCHART_DATA:'
@@ -37,10 +19,6 @@ function parseChartData(text: string): { display: string; chart: ChartData | nul
 }
 
 const DataAnalytics: React.FC = () => {
-  const { role } = useRole()
-  const config = PBI_CONFIGS[role]
-  const { title, description } = ROLE_LABELS[role]
-
   const [mcpStatus, setMcpStatus] = useState<McpStatus>('loading')
   const [mcpError, setMcpError] = useState<string | null>(null)
   const [tools, setTools] = useState<McpTool[]>([])
@@ -177,9 +155,11 @@ const DataAnalytics: React.FC = () => {
         </div>
         <div>
           <h1 className="text-text-primary text-2xl font-semibold leading-tight">
-            Data Analytics
+            Custom Data Analytics
           </h1>
-          <p className="text-text-secondary text-sm mt-1">{description}</p>
+          <p className="text-text-secondary text-sm mt-1">
+            Ask Claude questions about your data and save charts to your dashboard.
+          </p>
         </div>
       </div>
 
@@ -209,17 +189,6 @@ const DataAnalytics: React.FC = () => {
       )}
 
       {mcpStatus === 'ready' && <ToolsPanel tools={tools} />}
-
-      {/* Dashboard label */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-text-primary text-base font-medium">{title}</h2>
-        <span className="text-xs text-text-muted bg-card border border-border px-2.5 py-1 rounded-full capitalize">
-          {role} view
-        </span>
-      </div>
-
-      {/* Power BI embed */}
-      <PowerBIDashboard config={config} title={title} />
 
       {/* Claude AI chat + output */}
       <ChatInput

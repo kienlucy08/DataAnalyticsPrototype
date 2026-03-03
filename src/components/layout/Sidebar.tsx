@@ -10,6 +10,7 @@ import {
   Upload,
   Building2,
   BarChart3,
+  Monitor,
 } from 'lucide-react'
 import { useRole } from '../../context/RoleContext'
 import type { Role } from '../../context/RoleContext'
@@ -34,14 +35,20 @@ const NAV_ITEMS: NavItem[] = [
 
 const ANALYTICS_ITEMS: NavItem[] = [
   {
-    label: 'Data Analytics',
-    path: '/data-analytics',
+    label: 'PowerBI Dashboard',
+    path: '/powerbi-dashboard',
+    icon: <Monitor size={18} />,
+    roles: ['admin', 'pm', 'technician'],
+  },
+  {
+    label: 'Custom Data Analytics',
+    path: '/custom-data-analytics',
     icon: <BarChart3 size={18} />,
     roles: ['admin', 'pm', 'technician'],
   },
   {
-    label: 'My Dashboard',
-    path: '/dashboard',
+    label: 'My Custom Dashboard',
+    path: '/custom-dashboard',
     icon: <LayoutDashboard size={18} />,
     roles: ['admin', 'pm', 'technician'],
   },

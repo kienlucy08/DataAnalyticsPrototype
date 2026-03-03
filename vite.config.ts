@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    include: ['powerbi-client', 'powerbi-client-react'],
+    include: ['powerbi-client', 'powerbi-client-react', 'react-grid-layout'],
   },
   server: {
     proxy: {

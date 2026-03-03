@@ -8,7 +8,7 @@ interface DashboardContextValue {
   widgets: DashboardWidget[]
   addWidget: (chart: ChartData) => string
   removeWidget: (id: string) => void
-  updateLayouts: (layouts: Layout[]) => void
+  updateLayouts: (layouts: Layout) => void
   clearAll: () => void
 }
 
@@ -56,7 +56,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     })
   }, [])
 
-  const updateLayouts = useCallback((layouts: Layout[]) => {
+  const updateLayouts = useCallback((layouts: Layout) => {
     setWidgets(prev => {
       const next = prev.map(w => {
         const l = layouts.find(ll => ll.i === w.id)

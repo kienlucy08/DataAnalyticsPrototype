@@ -118,7 +118,7 @@ const AnalyticsOutput: React.FC<Props> = ({ activeTools, response, chartData, on
   const handleAddToDashboard = () => {
     if (!chartData) return
     addWidget(chartData)
-    navigate('/dashboard')
+    navigate('/custom-dashboard')
   }
 
   return (
