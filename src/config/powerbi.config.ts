@@ -11,7 +11,7 @@ export interface PBIConfig {
 
 export const PBI_CONFIGS: Record<'admin' | 'pm' | 'technician', PBIConfig> = {
   admin: {
-    iframeUrl: 'https://app.powerbi.com/onedrive/open?pbi_source=ODSPViewer&driveId=b!hTeS7dxrnEmCaX5mSyx1hpmsDuLywdlOlL_3cYtie1U0BSRs4Z4DSa1HwjKb8qGu&itemId=01235L3J2K26SKVJSXSZCKAP7JJQHGTFOF',      // paste your "Publish to web" src URL here
+    iframeUrl: 'https://app.powerbi.com/reportEmbed?reportId=d41fb76e-6057-47f4-aa09-a1eace101d23&autoAuth=true&ctid=f7315aa7-49bd-4b20-9699-d1480b9b30b5',      // paste your "Publish to web" src URL here
     reportId: '',       // Azure AD: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
     embedUrl: '',       // Azure AD: 'https://app.powerbi.com/reportEmbed?reportId=...'
     accessToken: '',    // Azure AD: embed token from backend
