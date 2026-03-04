@@ -93,15 +93,21 @@ function checkPermission(role: string, message: string): string | null {
     const isOrgQuery = orgPatterns.some(p => p.test(lower))
     const isPersonal = personalPatterns.some(p => p.test(lower))
     if (isOrgQuery && !isPersonal) {
-      return "You don't have permission to view organization-level or other users' data. As Matt Edrich (Technician), you can only access your own surveys and personal performance data."
+      return "You don't have permission to view organization-level or other users' data. As Matt Edrich (QC Technician), you can only access your own surveys and personal performance data."
+    }
+  }
+
+  const blockedOrgPatterns = [
+    /\b(acme|metro|nationwide|statewide|regional|county|city|municipal|global|national|federal)\b.*\b(org|organization|network|telecom|wireless)\b/i,
+  ]
+
+  if (role === 'org_owner') {
+    if (blockedOrgPatterns.some(p => p.test(lower))) {
+      return "You don't have permission to view data for that organization. Sara Connor manages FieldSync Organization and Test only."
     }
   }
 
   if (role === 'pm') {
-    // Detect references to specific org names that are not in Susan's allowed list
-    const blockedOrgPatterns = [
-      /\b(acme|metro|nationwide|statewide|regional|county|city|municipal|global|national|federal)\b.*\b(org|organization|network|telecom|wireless)\b/i,
-    ]
     if (blockedOrgPatterns.some(p => p.test(lower))) {
       return "You don't have permission to view data for that organization. Susan Smith is only a member of FieldSync Organization and Test."
     }

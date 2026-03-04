@@ -1,22 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Shield, Briefcase, Wrench, User } from 'lucide-react'
+import { ChevronDown, Shield, Briefcase, Wrench, User, Building2 } from 'lucide-react'
 import { useRole } from '../../context/RoleContext'
 import type { Role } from '../../context/RoleContext'
 
 const ROLES: { value: Role; label: string; icon: React.ReactNode }[] = [
   { value: 'admin',      label: 'Admin',           icon: <Shield size={14} /> },
+  { value: 'org_owner',  label: 'Org Owner',       icon: <Building2 size={14} /> },
   { value: 'pm',         label: 'Project Manager', icon: <Briefcase size={14} /> },
-  { value: 'technician', label: 'Technician',      icon: <Wrench size={14} /> },
+  { value: 'technician', label: 'QC Technician',   icon: <Wrench size={14} /> },
 ]
 
 const ROLE_BADGE: Record<Role, string> = {
   admin:      'text-purple-400 bg-purple-400/10 border-purple-400/30',
+  org_owner:  'text-amber-400 bg-amber-400/10 border-amber-400/30',
   pm:         'text-blue-400 bg-blue-400/10 border-blue-400/30',
   technician: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
 }
 
 const USER_PERSONAS: Record<Role, { full: string; first: string }> = {
   admin:      { full: 'Lucy Kien',    first: 'Lucy' },
+  org_owner:  { full: 'Sara Connor',  first: 'Sara' },
   pm:         { full: 'Susan Smith',  first: 'Susan' },
   technician: { full: 'Matt Edrich',  first: 'Matt' },
 }
@@ -96,8 +99,9 @@ const TopNav: React.FC = () => {
                     ].join(' ')}
                   >
                     <span className={
-                      r.value === 'admin' ? 'text-purple-400' :
-                      r.value === 'pm' ? 'text-blue-400' : 'text-emerald-400'
+                      r.value === 'admin'      ? 'text-purple-400' :
+                      r.value === 'org_owner'  ? 'text-amber-400' :
+                      r.value === 'pm'         ? 'text-blue-400' : 'text-emerald-400'
                     }>
                       {r.icon}
                     </span>

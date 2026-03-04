@@ -356,11 +356,91 @@ function TechnicianView() {
   )
 }
 
+// ─── Org Owner View ────────────────────────────────────────────────────────
+
+const ORG_STATS = [
+  {
+    org: 'FieldSync Org',
+    total: 28, completed: 17, inProgress: 7, overdue: 2, completionRate: 61,
+  },
+  {
+    org: 'Test Org',
+    total: 19, completed: 11, inProgress: 4, overdue: 1, completionRate: 58,
+  },
+]
+
+function OrgOwnerView() {
+  const allSurveys = [...UNASSIGNED_SURVEYS, ...ASSIGNED_SURVEYS]
+  return (
+    <div className="space-y-6">
+      {/* Org-level KPI cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {ORG_STATS.map(org => (
+          <div key={org.org} className="rounded-xl border border-border bg-card px-4 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-text-primary text-sm font-semibold">{org.org}</span>
+              <span className="text-[10px] text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-full font-medium">
+                {org.completionRate}% complete
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {[
+                { label: 'Total',       value: org.total,       color: 'text-text-primary' },
+                { label: 'Completed',   value: org.completed,   color: 'text-emerald-400' },
+                { label: 'In Progress', value: org.inProgress,  color: 'text-blue-400' },
+                { label: 'Overdue',     value: org.overdue,     color: 'text-red-400' },
+              ].map(stat => (
+                <div key={stat.label}>
+                  <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
+                  <div className="text-text-muted text-[10px] mt-0.5">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3">
+              <ProgressBar value={org.completionRate} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* All surveys table */}
+      <div>
+        <SectionHeader icon={<BarChart3 size={15} />} title="All Surveys in Your Organizations" count={allSurveys.length} />
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-surface border-b border-border">
+                {['ID', 'Site', 'Organization', 'Assignee', 'Status', 'Progress', 'Due Date'].map(h => (
+                  <th key={h} className="px-3 py-2.5 text-left text-text-primary font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {allSurveys.map(s => (
+                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface/40">
+                  <td className="px-3 py-2.5 text-text-muted font-mono">{s.id}</td>
+                  <td className="px-3 py-2.5 text-text-primary">{s.site}</td>
+                  <td className="px-3 py-2.5 text-text-secondary">{s.organization}</td>
+                  <td className="px-3 py-2.5 text-text-secondary">{s.assignee ?? <span className="text-text-muted italic">Unassigned</span>}</td>
+                  <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
+                  <td className="px-3 py-2.5 w-32">{s.progress !== undefined ? <ProgressBar value={s.progress} /> : '—'}</td>
+                  <td className="px-3 py-2.5 text-text-muted">{s.dueDate ?? s.completedDate ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 const ROLE_META = {
   admin:      { subtitle: 'Organization-wide survey overview, assignments, and performance metrics.' },
-  pm:         { subtitle: 'Manage survey assignments and track technician progress across your organizations.' },
+  org_owner:  { subtitle: 'Survey health, completion rates, and operational status across your managed organizations.' },
+  pm:         { subtitle: 'Manage survey assignments and track QC technician progress across your organizations.' },
   technician: { subtitle: 'Your assigned surveys, progress, and completed inspection history.' },
 }
 
@@ -381,6 +461,7 @@ const QADashboard: React.FC = () => {
       </div>
 
       {role === 'admin'      && <AdminView />}
+      {role === 'org_owner'  && <OrgOwnerView />}
       {role === 'pm'         && <PMView />}
       {role === 'technician' && <TechnicianView />}
     </div>

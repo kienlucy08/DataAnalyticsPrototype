@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react'
 
-export type Role = 'admin' | 'pm' | 'technician'
+export type Role = 'admin' | 'org_owner' | 'pm' | 'technician'
 
 interface RoleContextValue {
   role: Role

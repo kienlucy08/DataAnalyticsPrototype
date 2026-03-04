@@ -38,19 +38,19 @@ const ANALYTICS_ITEMS: NavItem[] = [
     label: 'PowerBI Dashboard',
     path: '/powerbi-dashboard',
     icon: <Monitor size={18} />,
-    roles: ['admin', 'pm', 'technician'],
+    roles: ['admin', 'org_owner', 'pm', 'technician'],
   },
   {
     label: 'Custom Data Analytics',
     path: '/custom-data-analytics',
     icon: <BarChart3 size={18} />,
-    roles: ['admin', 'pm', 'technician'],
+    roles: ['admin', 'org_owner', 'pm', 'technician'],
   },
   {
     label: 'My Custom Dashboard',
     path: '/custom-dashboard',
     icon: <LayoutDashboard size={18} />,
-    roles: ['admin', 'pm', 'technician'],
+    roles: ['admin', 'org_owner', 'pm', 'technician'],
   },
 ]
 

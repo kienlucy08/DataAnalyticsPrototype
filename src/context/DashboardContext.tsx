@@ -6,6 +6,7 @@ import type { Role } from './RoleContext'
 
 const USER_KEYS: Record<Role, string> = {
   admin:      'lucy_kien',
+  org_owner:  'sara_connor',
   pm:         'susan_smith',
   technician: 'matt_edrich',
 }

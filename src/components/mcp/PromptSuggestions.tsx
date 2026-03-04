@@ -64,7 +64,7 @@ const SUGGESTIONS: Record<Role, Suggestion[]> = {
     },
   ],
 
-  pm: [
+  org_owner: [
     {
       category: 'FieldSync Organization',
       questions: [
@@ -104,6 +104,51 @@ const SUGGESTIONS: Record<Role, Suggestion[]> = {
         'What carrier has the most coax feedlines per tower in FieldSync Organization?',
         'How many sectors on average are captured in service close-out surveys in FieldSync Organization?',
         'What is the most common sector used in FieldSync Organization surveys?',
+      ],
+    },
+  ],
+
+  pm: [
+    {
+      category: 'Sites & Site Visits',
+      questions: [
+        'List all sites in FieldSync Organization with their current status',
+        'How many sites have active site visits in progress in FieldSync Organization?',
+        'List sites with no recent site visits in the last 90 days in FieldSync Organization',
+        'What is the status of each site visit in FieldSync Organization?',
+        'How many site visits are overdue in FieldSync Organization?',
+        'List all sites in Test with their current status',
+      ],
+    },
+    {
+      category: 'Survey Activity & Status',
+      questions: [
+        'How many surveys are currently in progress in FieldSync Organization?',
+        'How many surveys are overdue in FieldSync Organization?',
+        'What is the survey completion rate in FieldSync Organization?',
+        'List all surveys in FieldSync Organization by status',
+        'How many surveys are unassigned in FieldSync Organization?',
+        'What is the average time to complete a survey in FieldSync Organization?',
+      ],
+    },
+    {
+      category: 'Scan & Inspection Activity',
+      questions: [
+        'How many scans exist in FieldSync Organization?',
+        'What is the average number of files per scan in FieldSync Organization?',
+        'What is the average number of scans per survey in FieldSync Organization?',
+        'How many scans exist in Test?',
+        'What is the average number of files per scan in Test?',
+      ],
+    },
+    {
+      category: 'QC Technician Productivity',
+      questions: [
+        'Who is the most productive QC technician in FieldSync Organization? Provide statistics.',
+        'What is the average time each QC technician takes to complete a survey in FieldSync Organization?',
+        'Which QC technician has the highest deficiency identification rate in FieldSync Organization?',
+        'How many surveys has each QC technician completed in FieldSync Organization?',
+        'What is the average number of deficiencies per survey per technician in FieldSync Organization?',
       ],
     },
   ],
