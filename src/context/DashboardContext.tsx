@@ -5,10 +5,11 @@ import { useRole } from './RoleContext'
 import type { Role } from './RoleContext'
 
 const USER_KEYS: Record<Role, string> = {
-  admin:      'lucy_kien',
-  org_owner:  'sara_connor',
-  pm:         'susan_smith',
-  technician: 'matt_edrich',
+  admin:           'lucy_kien',
+  org_owner:       'sara_connor',
+  pm:              'susan_smith',
+  qc_technician:   'matt_edrich',
+  qc_technician_2: 'john_smith',
 }
 
 function storageKey(userKey: string) {

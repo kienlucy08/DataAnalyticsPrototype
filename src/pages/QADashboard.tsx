@@ -435,13 +435,28 @@ function OrgOwnerView() {
   )
 }
 
+// ─── QC Technician 2 View (placeholder) ───────────────────────────────────
+
+function QcTech2View() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 rounded-xl border border-border bg-card">
+      <ClipboardCheck className="text-text-muted mb-4" size={36} />
+      <p className="text-text-primary font-medium mb-1">John Smith — QC Technician</p>
+      <p className="text-text-muted text-sm text-center max-w-sm">
+        This view is under construction. John's personalized survey activity and performance data will appear here.
+      </p>
+    </div>
+  )
+}
+
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 const ROLE_META = {
-  admin:      { subtitle: 'Organization-wide survey overview, assignments, and performance metrics.' },
-  org_owner:  { subtitle: 'Survey health, completion rates, and operational status across your managed organizations.' },
-  pm:         { subtitle: 'Manage survey assignments and track QC technician progress across your organizations.' },
-  technician: { subtitle: 'Your assigned surveys, progress, and completed inspection history.' },
+  admin:           { subtitle: 'Organization-wide survey overview, assignments, and performance metrics.' },
+  org_owner:       { subtitle: 'Survey health, completion rates, and operational status across your managed organizations.' },
+  pm:              { subtitle: 'Manage survey assignments and track QC technician progress across your organizations.' },
+  qc_technician:   { subtitle: 'Your assigned surveys, progress, and completed inspection history.' },
+  qc_technician_2: { subtitle: 'Your assigned surveys, progress, and completed inspection history.' },
 }
 
 const QADashboard: React.FC = () => {
@@ -460,10 +475,11 @@ const QADashboard: React.FC = () => {
         </div>
       </div>
 
-      {role === 'admin'      && <AdminView />}
-      {role === 'org_owner'  && <OrgOwnerView />}
-      {role === 'pm'         && <PMView />}
-      {role === 'technician' && <TechnicianView />}
+      {role === 'admin'           && <AdminView />}
+      {role === 'org_owner'       && <OrgOwnerView />}
+      {role === 'pm'              && <PMView />}
+      {role === 'qc_technician'   && <TechnicianView />}
+      {role === 'qc_technician_2' && <QcTech2View />}
     </div>
   )
 }

@@ -80,20 +80,19 @@ function parseMarkdownTable(text: string): ChartData | null {
 function checkPermission(role: string, message: string): string | null {
   const lower = message.toLowerCase()
 
-  if (role === 'technician') {
+  if (role === 'qc_technician' || role === 'qc_technician_2') {
     const orgPatterns = [
       /\b(organization|fieldsync|test org|test organization)\b/i,
       /\ball (surveys?|towers?|technicians?|users?|inspections?)\b/i,
       /\beveryone'?s?\b/i,
       /\bother (technicians?|users?|people)\b/i,
-      /\bjames\b/i,
-      /\bsarah\b/i,
     ]
-    const personalPatterns = [/\b(my|i |i've|i have|me |mine|matt)\b/i]
+    const personalPatterns = [/\b(my|i |i've|i have|me |mine|matt|john)\b/i]
     const isOrgQuery = orgPatterns.some(p => p.test(lower))
     const isPersonal = personalPatterns.some(p => p.test(lower))
+    const name = role === 'qc_technician' ? 'Matt Edrich' : 'John Smith'
     if (isOrgQuery && !isPersonal) {
-      return "You don't have permission to view organization-level or other users' data. As Matt Edrich (QC Technician), you can only access your own surveys and personal performance data."
+      return `You don't have permission to view organization-level or other users' data. As ${name} (QC Technician), you can only access your own surveys and personal performance data.`
     }
   }
 

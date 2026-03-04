@@ -153,7 +153,38 @@ const SUGGESTIONS: Record<Role, Suggestion[]> = {
     },
   ],
 
-  technician: [
+  qc_technician: [
+    {
+      category: 'My Survey Activity',
+      questions: [
+        'How many surveys have I completed?',
+        'How many surveys have I completed in the last 30 days?',
+        'Show me all my surveys and their current status',
+        'What is my survey completion rate for assigned surveys?',
+      ],
+    },
+    {
+      category: 'My Deficiencies',
+      questions: [
+        'What is my average number of deficiencies per survey?',
+        'What are the most common deficiencies I have identified in my surveys?',
+        'What priority 1 deficiencies have I identified?',
+        'What is the average height of deficiencies I have found on guyed towers?',
+        'What is the most common safety hazard I have identified in JSA surveys?',
+      ],
+    },
+    {
+      category: 'My Tower Stats',
+      questions: [
+        'What is the average height of towers I have inspected?',
+        'How many guy wire attachments have I documented on average?',
+        'What is the average time it takes me to complete a survey?',
+        'What tower types have I inspected the most?',
+      ],
+    },
+  ],
+
+  qc_technician_2: [
     {
       category: 'My Survey Activity',
       questions: [
