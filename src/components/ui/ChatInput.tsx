@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Send, Sparkles, Loader2 } from 'lucide-react'
 import type { McpStatus } from '../../types/mcp'
 
@@ -6,6 +6,8 @@ interface Props {
   disabled?: boolean
   mcpStatus?: McpStatus
   onSend: (message: string) => Promise<void>
+  pendingFill?: string
+  onFillConsumed?: () => void
 }
 
 const STATUS_BADGE: Record<McpStatus, string> = {
@@ -14,9 +16,17 @@ const STATUS_BADGE: Record<McpStatus, string> = {
   error: 'Unavailable',
 }
 
-const ChatInput: React.FC<Props> = ({ disabled = false, mcpStatus = 'loading', onSend }) => {
+const ChatInput: React.FC<Props> = ({ disabled = false, mcpStatus = 'loading', onSend, pendingFill, onFillConsumed }) => {
   const [value, setValue] = useState('')
   const [sending, setSending] = useState(false)
+
+  // Inject text from prompt suggestions
+  useEffect(() => {
+    if (pendingFill) {
+      setValue(pendingFill)
+      onFillConsumed?.()
+    }
+  }, [pendingFill])
 
   const canSend = !disabled && !sending && value.trim().length > 0
 

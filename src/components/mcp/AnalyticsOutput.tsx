@@ -1,7 +1,7 @@
-import React from 'react'
-import { Loader2, Wrench, LayoutDashboard, Download } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Loader2, Wrench, LayoutDashboard, Download, BarChart2, TrendingUp, Activity, PieChart as PieIcon, Hash, Table2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { ChartData } from '../../types/dashboard'
+import type { ChartData, ChartType } from '../../types/dashboard'
 import { useDashboard } from '../../context/DashboardContext'
 import ChartRenderer from '../charts/ChartRenderer'
 
@@ -10,7 +10,17 @@ interface Props {
   response: string | null
   chartData?: ChartData | null
   onSaveChat?: () => void
+  isPermissionDenied?: boolean
 }
+
+const CHART_TYPES: { type: ChartType; icon: React.ReactNode; label: string }[] = [
+  { type: 'bar',    icon: <BarChart2 size={13} />,  label: 'Bar'  },
+  { type: 'line',   icon: <TrendingUp size={13} />, label: 'Line' },
+  { type: 'area',   icon: <Activity size={13} />,   label: 'Area' },
+  { type: 'pie',    icon: <PieIcon size={13} />,    label: 'Pie'  },
+  { type: 'metric', icon: <Hash size={13} />,        label: 'Card'  },
+  { type: 'table',  icon: <Table2 size={13} />,      label: 'Table' },
+]
 
 /** Minimal markdown renderer — handles bold, inline code, tables, and line breaks */
 function renderMarkdown(text: string): React.ReactNode[] {
@@ -21,7 +31,6 @@ function renderMarkdown(text: string): React.ReactNode[] {
   while (i < lines.length) {
     const line = lines[i]
 
-    // Table detection: line starts with |
     if (line.trimStart().startsWith('|')) {
       const tableLines: string[] = []
       while (i < lines.length && lines[i].trimStart().startsWith('|')) {
@@ -32,7 +41,6 @@ function renderMarkdown(text: string): React.ReactNode[] {
       continue
     }
 
-    // Heading
     if (line.startsWith('### ')) {
       nodes.push(<p key={i} className="text-text-primary font-semibold text-sm mt-3 mb-1">{line.slice(4)}</p>)
     } else if (line.startsWith('## ')) {
@@ -75,7 +83,7 @@ function inlineMarkdown(text: string): React.ReactNode {
 
 function TableBlock({ lines }: { lines: string[] }) {
   const rows = lines
-    .filter(l => !l.match(/^\|[\s-|]+\|$/)) // skip separator rows
+    .filter(l => !l.match(/^\|[\s-|]+\|$/))
     .map(l =>
       l.split('|')
         .filter((_, i, arr) => i > 0 && i < arr.length - 1)
@@ -109,15 +117,21 @@ function TableBlock({ lines }: { lines: string[] }) {
   )
 }
 
-const AnalyticsOutput: React.FC<Props> = ({ activeTools, response, chartData, onSaveChat }) => {
+const AnalyticsOutput: React.FC<Props> = ({ activeTools, response, chartData, onSaveChat, isPermissionDenied }) => {
   const { addWidget } = useDashboard()
   const navigate = useNavigate()
+  const [selectedType, setSelectedType] = useState<ChartType>(chartData?.type ?? 'bar')
+
+  // Reset type selection when new chart data arrives
+  useEffect(() => {
+    if (chartData) setSelectedType(chartData.type)
+  }, [chartData?.title, chartData?.type])
 
   if (activeTools.length === 0 && !response) return null
 
   const handleAddToDashboard = () => {
     if (!chartData) return
-    addWidget(chartData)
+    addWidget({ ...chartData, type: selectedType })
     navigate('/custom-dashboard')
   }
 
@@ -140,8 +154,16 @@ const AnalyticsOutput: React.FC<Props> = ({ activeTools, response, chartData, on
         </div>
       )}
 
-      {/* Response */}
-      {response && (
+      {/* Permission denied banner */}
+      {isPermissionDenied && response && (
+        <div className="flex items-start gap-3 px-4 py-4 bg-red-400/5 border-b border-red-400/20">
+          <span className="text-lg shrink-0 mt-0.5">⛔</span>
+          <p className="text-red-300 text-sm leading-relaxed">{response.replace(/^⛔\s*(Access Denied[:\s]*)?/, '')}</p>
+        </div>
+      )}
+
+      {/* Normal response */}
+      {!isPermissionDenied && response && (
         <div className="px-4 py-4 space-y-0.5">
           <div className="flex items-center gap-1.5 mb-3">
             <Wrench className="w-3.5 h-3.5 text-accent" />
@@ -151,22 +173,44 @@ const AnalyticsOutput: React.FC<Props> = ({ activeTools, response, chartData, on
         </div>
       )}
 
-      {/* Inline chart preview */}
-      {chartData && (
-        <div className="px-4 pb-4">
+      {/* Inline chart preview + type switcher */}
+      {chartData && !isPermissionDenied && (
+        <div className="px-4 pb-3">
           <div className="rounded-lg border border-border bg-surface overflow-hidden">
-            <div className="px-3 py-2 border-b border-border">
-              <span className="text-text-secondary text-xs font-medium">{chartData.title}</span>
+            {/* Header with type switcher */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border gap-2">
+              <span className="text-text-secondary text-xs font-medium truncate">{chartData.title}</span>
+              <div className="flex items-center gap-0.5 shrink-0 bg-card rounded-lg p-0.5 border border-border">
+                {CHART_TYPES.map(({ type, icon, label }) => (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedType(type)}
+                    title={label}
+                    className={[
+                      'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors',
+                      selectedType === type
+                        ? 'bg-accent text-white'
+                        : 'text-text-muted hover:text-text-secondary',
+                    ].join(' ')}
+                  >
+                    {icon}
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="p-3 h-64">
-              <ChartRenderer widget={chartData} height={220} />
+            <div className={`p-3 ${selectedType === 'metric' ? 'h-32' : selectedType === 'table' ? 'max-h-72 overflow-auto' : 'h-64'}`}>
+              <ChartRenderer
+                widget={{ ...chartData, type: selectedType }}
+                height={selectedType === 'metric' ? 96 : 220}
+              />
             </div>
           </div>
         </div>
       )}
 
       {/* Action buttons */}
-      {(chartData || onSaveChat) && (
+      {(chartData || onSaveChat) && !isPermissionDenied && (
         <div className="flex items-center gap-2 px-4 pb-4">
           {chartData && (
             <button
