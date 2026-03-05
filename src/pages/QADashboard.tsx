@@ -2,9 +2,10 @@ import React, { useState } from 'react'
 import {
   ClipboardCheck, Clock, CheckCircle2, AlertCircle, TrendingUp,
   ChevronDown, ChevronRight, Search, MoreHorizontal, XCircle,
-  UserCheck, Users, Lock,
+  UserCheck, Users, Lock, Pencil, Plus, X,
 } from 'lucide-react'
 import { useRole } from '../context/RoleContext'
+import { useDashboard } from '../context/DashboardContext'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -12,6 +13,22 @@ type SurveyScope  = 'inspection' | 'cop' | 'jsa' | 'facilities' | 'other'
 type SurveyStatus = 'unassigned' | 'pending' | 'in_progress' | 'completed' | 'overdue'
 type VisitStatus  = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
 type Priority     = 'high' | 'medium' | 'low'
+type KpiContext   = 'surveys' | 'scans' | 'site_visits' | 'sites'
+
+interface KpiData {
+  surveys: Survey[]
+  scans: Scan[]
+  siteVisits: SiteVisit[]
+  sites: SiteData[]
+}
+
+interface MetricDef {
+  id: string
+  label: string
+  icon: React.ReactNode
+  color: string
+  compute: (data: KpiData) => number | string
+}
 
 interface Survey {
   id: string
@@ -166,6 +183,85 @@ const ORG_SITES       = ALL_SITES.filter(s => ORG_FILTER.includes(s.organization
 const MATT_SITES      = ALL_SITES.filter(s => MATT_SURVEYS.some(sv => sv.siteId === s.siteId) || MATT_VISITS.some(v => v.siteId === s.siteId))
 const JOHN_SITES      = ALL_SITES.filter(s => JOHN_SURVEYS.some(sv => sv.siteId === s.siteId) || JOHN_VISITS.some(v => v.siteId === s.siteId))
 
+// ─── KPI metric registry ────────────────────────────────────────────────────
+
+const SURVEY_METRICS: MetricDef[] = [
+  { id: 'sv_total',       label: 'Total Surveys',  icon: <ClipboardCheck size={16} />, color: 'text-accent',        compute: ({ surveys: s }) => s.length },
+  { id: 'sv_completed',   label: 'Completed',      icon: <CheckCircle2 size={16} />,   color: 'text-emerald-400',   compute: ({ surveys: s }) => s.filter(x => x.status === 'completed').length },
+  { id: 'sv_in_progress', label: 'In Progress',    icon: <TrendingUp size={16} />,     color: 'text-blue-400',      compute: ({ surveys: s }) => s.filter(x => x.status === 'in_progress').length },
+  { id: 'sv_overdue',     label: 'Overdue',        icon: <AlertCircle size={16} />,    color: 'text-red-400',       compute: ({ surveys: s }) => s.filter(x => x.status === 'overdue').length },
+  { id: 'sv_unassigned',  label: 'Unassigned',     icon: <AlertCircle size={16} />,    color: 'text-amber-400',     compute: ({ surveys: s }) => s.filter(x => x.status === 'unassigned').length },
+  { id: 'sv_pending',     label: 'Pending',        icon: <Clock size={16} />,          color: 'text-amber-400',     compute: ({ surveys: s }) => s.filter(x => x.status === 'pending').length },
+  { id: 'sv_rate',        label: 'Completion %',   icon: <TrendingUp size={16} />,     color: 'text-accent',        compute: ({ surveys: s }) => s.length ? `${Math.round(s.filter(x => x.status === 'completed').length / s.length * 100)}%` : '0%' },
+]
+
+const SCAN_METRICS: MetricDef[] = [
+  { id: 'sc_total',        label: 'Total Scans',   icon: <ClipboardCheck size={16} />, color: 'text-accent',         compute: ({ scans }) => scans.length },
+  { id: 'sc_files',        label: 'Total Files',   icon: <TrendingUp size={16} />,     color: 'text-blue-400',       compute: ({ scans }) => scans.reduce((n, s) => n + s.files, 0) },
+  { id: 'sc_unallocated',  label: 'Unallocated',   icon: <AlertCircle size={16} />,    color: 'text-amber-400',      compute: ({ scans }) => scans.filter(s => !s.siteVisit).length },
+  { id: 'sc_unique_sites', label: 'Unique Sites',  icon: <Users size={16} />,          color: 'text-text-secondary', compute: ({ scans }) => new Set(scans.map(s => s.siteId)).size },
+  { id: 'sc_technicians',  label: 'Technicians',   icon: <UserCheck size={16} />,      color: 'text-text-secondary', compute: ({ scans }) => new Set(scans.map(s => s.technician)).size },
+]
+
+const VISIT_METRICS: MetricDef[] = [
+  { id: 'vt_total',       label: 'Total Visits',  icon: <ClipboardCheck size={16} />, color: 'text-accent',        compute: ({ siteVisits }) => siteVisits.length },
+  { id: 'vt_processed',   label: 'Processed',     icon: <CheckCircle2 size={16} />,   color: 'text-emerald-400',   compute: ({ siteVisits }) => siteVisits.filter(s => s.processed).length },
+  { id: 'vt_unprocessed', label: 'Unprocessed',   icon: <Clock size={16} />,          color: 'text-amber-400',     compute: ({ siteVisits }) => siteVisits.filter(s => !s.processed).length },
+  { id: 'vt_in_progress', label: 'In Progress',   icon: <TrendingUp size={16} />,     color: 'text-blue-400',      compute: ({ siteVisits }) => siteVisits.filter(s => s.status === 'in_progress').length },
+  { id: 'vt_scheduled',   label: 'Scheduled',     icon: <Clock size={16} />,          color: 'text-blue-400',      compute: ({ siteVisits }) => siteVisits.filter(s => s.status === 'scheduled').length },
+  { id: 'vt_completed',   label: 'Completed',     icon: <CheckCircle2 size={16} />,   color: 'text-emerald-400',   compute: ({ siteVisits }) => siteVisits.filter(s => s.status === 'completed').length },
+  { id: 'vt_cancelled',   label: 'Cancelled',     icon: <XCircle size={16} />,        color: 'text-text-muted',    compute: ({ siteVisits }) => siteVisits.filter(s => s.status === 'cancelled').length },
+]
+
+const SITE_METRICS: MetricDef[] = [
+  { id: 'st_total',           label: 'Total Sites',     icon: <Users size={16} />,          color: 'text-accent',         compute: ({ sites }) => sites.length },
+  { id: 'st_overdue',         label: 'Overdue',         icon: <AlertCircle size={16} />,    color: 'text-red-400',        compute: ({ sites }) => sites.filter(s => s.isOverdue).length },
+  { id: 'st_never_processed', label: 'Never Processed', icon: <XCircle size={16} />,        color: 'text-amber-400',      compute: ({ sites }) => sites.filter(s => !s.lastProcessTime).length },
+  { id: 'st_processed',       label: 'Processed',       icon: <CheckCircle2 size={16} />,   color: 'text-emerald-400',    compute: ({ sites }) => sites.filter(s => !!s.lastProcessTime && !s.isOverdue).length },
+  { id: 'st_unique_orgs',     label: 'Organizations',   icon: <Users size={16} />,          color: 'text-text-secondary', compute: ({ sites }) => new Set(sites.map(s => s.organization)).size },
+  { id: 'st_with_visit',      label: 'Has Site Visit',  icon: <ClipboardCheck size={16} />, color: 'text-blue-400',       compute: ({ sites }) => sites.filter(s => s.lastSiteVisit).length },
+]
+
+const DEFAULT_KPI_CONFIG: Record<KpiContext, string[]> = {
+  surveys:     ['sv_total', 'sv_completed', 'sv_in_progress', 'sv_overdue'],
+  scans:       ['sc_total', 'sc_files', 'sc_unallocated', 'sc_unique_sites'],
+  site_visits: ['vt_total', 'vt_processed', 'vt_unprocessed', 'vt_in_progress'],
+  sites:       ['st_total', 'st_overdue', 'st_never_processed', 'st_processed'],
+}
+
+// Bump this when role defaults change — clears stale cached configs
+const KPI_CONFIG_VERSION = 2
+
+function useKpiConfig(roleKey: string, surveyOverride?: string[]) {
+  const effectiveDefaults: Record<KpiContext, string[]> = {
+    ...DEFAULT_KPI_CONFIG,
+    surveys: surveyOverride ?? DEFAULT_KPI_CONFIG.surveys,
+  }
+  const storageKey = `fieldsync_kpi_${roleKey}`
+  const versionKey = `fieldsync_kpi_v`
+  const [config, setConfig] = useState<Record<KpiContext, string[]>>(() => {
+    try {
+      // If the stored version is stale, reset to fresh defaults
+      const storedVersion = Number(localStorage.getItem(versionKey) ?? '0')
+      if (storedVersion < KPI_CONFIG_VERSION) {
+        localStorage.setItem(versionKey, String(KPI_CONFIG_VERSION))
+        localStorage.removeItem(storageKey)
+        return { ...effectiveDefaults }
+      }
+      const stored = JSON.parse(localStorage.getItem(storageKey) ?? 'null')
+      return stored ? { ...effectiveDefaults, ...stored } : { ...effectiveDefaults }
+    } catch { return { ...effectiveDefaults } }
+  })
+  const save = (next: Record<KpiContext, string[]>) => {
+    setConfig(next)
+    localStorage.setItem(storageKey, JSON.stringify(next))
+  }
+  const addMetric    = (ctx: KpiContext, id: string) => save({ ...config, [ctx]: [...config[ctx], id] })
+  const removeMetric = (ctx: KpiContext, id: string) => save({ ...config, [ctx]: config[ctx].filter(x => x !== id) })
+  const resetContext = (ctx: KpiContext) => save({ ...config, [ctx]: [...effectiveDefaults[ctx]] })
+  return { config, addMetric, removeMetric, resetContext }
+}
+
 // ─── Shared UI helpers ─────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<SurveyStatus, string> = {
@@ -237,6 +333,159 @@ function KpiCard({ label, value, icon, color }: { label: string; value: number |
   )
 }
 
+interface KpiSectionProps {
+  variant?: 'default' | 'tab'
+  context: KpiContext
+  metrics: MetricDef[]
+  activeIds: string[]
+  data: KpiData
+  onAdd: (id: string) => void
+  onRemove: (id: string) => void
+  onReset: () => void
+}
+
+function KpiSection({ variant = 'default', metrics, activeIds, data, onAdd, onRemove, onReset }: KpiSectionProps) {
+  const [editing, setEditing]   = useState(false)
+  const [addOpen, setAddOpen]   = useState(false)
+
+  // Pull metric-type widgets from the analytics dashboard for this role
+  const { widgets: dashWidgets } = useDashboard()
+  const dashMetrics = dashWidgets.filter(w => w.type === 'metric')
+
+  // Resolve active cards — supports both registry IDs and `dash_{widgetId}` IDs
+  const active = activeIds.map(id => {
+    if (id.startsWith('dash_')) {
+      const widget = dashMetrics.find(w => `dash_${w.id}` === id)
+      if (!widget) return null
+      return {
+        id,
+        label: widget.title,
+        icon: <TrendingUp size={16} />,
+        color: 'text-accent',
+        compute: () => widget.value ?? '—',
+      } as MetricDef
+    }
+    return metrics.find(m => m.id === id) ?? null
+  }).filter(Boolean) as MetricDef[]
+
+  const available     = metrics.filter(m => !activeIds.includes(m.id))
+  const availableDash = dashMetrics.filter(w => !activeIds.includes(`dash_${w.id}`))
+  const hasMore       = available.length > 0 || availableDash.length > 0
+
+  const toggle = () => { setEditing(v => !v); setAddOpen(false) }
+
+  const outer = variant === 'tab'
+    ? 'relative px-4 py-4 border-b border-border bg-surface/20'
+    : 'relative'
+
+  return (
+    <div className={outer}>
+      {/* Edit controls — top-right */}
+      <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+        {editing && (
+          <button
+            onClick={() => { onReset(); setAddOpen(false) }}
+            className="text-[10px] text-text-muted hover:text-accent transition-colors"
+          >
+            Reset
+          </button>
+        )}
+        <button
+          onClick={toggle}
+          className={[
+            'p-1 rounded-md transition-colors',
+            editing ? 'text-text-primary bg-surface' : 'text-text-muted hover:text-text-primary',
+          ].join(' ')}
+          title={editing ? 'Done' : 'Customize KPIs'}
+        >
+          {editing ? <X size={13} /> : <Pencil size={13} />}
+        </button>
+      </div>
+
+      {/* Empty state — no cards configured yet */}
+      {active.length === 0 && !editing && (
+        <button
+          onClick={toggle}
+          className="flex items-center gap-1.5 text-xs text-text-muted hover:text-accent transition-colors py-1 pr-8"
+        >
+          <Plus size={12} />
+          Add KPI cards
+        </button>
+      )}
+
+      {/* Card grid */}
+      {(active.length > 0 || editing) && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pr-8">
+        {active.map(m => (
+          <div key={m.id} className="relative">
+            <KpiCard label={m.label} value={m.compute(data)} icon={m.icon} color={m.color} />
+            {/* Analytics-dashboard badge */}
+            {m.id.startsWith('dash_') && (
+              <span className="absolute bottom-1.5 right-2 text-[9px] text-text-muted font-medium">Analytics</span>
+            )}
+            {editing && (
+              <button
+                onClick={() => onRemove(m.id)}
+                className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-red-400/20 hover:bg-red-400/40 text-red-400 flex items-center justify-center transition-colors"
+              >
+                <X size={9} />
+              </button>
+            )}
+          </div>
+        ))}
+
+        {/* Add Card tile — shown when in edit mode and any options remain */}
+        {editing && hasMore && (
+          <div className="relative">
+            <button
+              onClick={() => setAddOpen(v => !v)}
+              className="w-full h-full min-h-[84px] rounded-xl border-2 border-dashed border-border hover:border-accent/60 flex flex-col items-center justify-center gap-1 text-text-muted hover:text-accent transition-colors"
+            >
+              <Plus size={15} />
+              <span className="text-[11px] font-medium">Add Card</span>
+            </button>
+            {addOpen && (
+              <div className="absolute left-0 top-full mt-1 w-56 bg-card border border-border rounded-xl shadow-2xl z-30 overflow-hidden max-h-72 overflow-y-auto">
+                {/* Registry metrics */}
+                {available.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => { onAdd(m.id); setAddOpen(false) }}
+                    className="w-full text-left px-3 py-2.5 text-xs text-text-secondary hover:bg-surface hover:text-text-primary transition-colors flex items-center gap-2"
+                  >
+                    <span className={m.color}>{m.icon}</span>
+                    {m.label}
+                  </button>
+                ))}
+
+                {/* Analytics Dashboard metrics */}
+                {availableDash.length > 0 && (
+                  <>
+                    {available.length > 0 && <div className="border-t border-border my-1" />}
+                    <div className="px-3 py-1.5 text-[10px] text-text-muted font-medium uppercase tracking-wide">
+                      From Analytics Dashboard
+                    </div>
+                    {availableDash.map(w => (
+                      <button
+                        key={w.id}
+                        onClick={() => { onAdd(`dash_${w.id}`); setAddOpen(false) }}
+                        className="w-full text-left px-3 py-2.5 text-xs text-text-secondary hover:bg-surface hover:text-text-primary transition-colors flex items-center gap-2"
+                      >
+                        <TrendingUp size={13} className="text-accent shrink-0" />
+                        <span className="flex-1 truncate">{w.title}</span>
+                        <span className="text-[10px] text-text-muted bg-surface px-1.5 py-0.5 rounded shrink-0">{w.value}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>}
+    </div>
+  )
+}
+
 // ─── Dashboard Tabs ─────────────────────────────────────────────────────────
 
 type TabId = 'surveys' | 'scans' | 'site_visits' | 'sites'
@@ -256,6 +505,7 @@ interface DashboardTabsProps {
   siteVisits: SiteVisit[]
   sites: SiteData[]
   customSurveysContent?: React.ReactNode
+  tabKpis?: Partial<Record<TabId, React.ReactNode>>
 }
 
 function Checkbox({ checked, onClick }: { checked: boolean; onClick: () => void }) {
@@ -281,7 +531,7 @@ function ActionCell() {
   )
 }
 
-function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent }: DashboardTabsProps) {
+function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent, tabKpis }: DashboardTabsProps) {
   const [activeTab, setActiveTab]               = useState<TabId>('surveys')
   const [filterText, setFilterText]             = useState('')
   const [scopeFilter, setScopeFilter]           = useState<SurveyScope | 'all'>('all')
@@ -373,6 +623,9 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
           </button>
         ))}
       </div>
+
+      {/* Tab KPIs */}
+      {tabKpis?.[activeTab]}
 
       {/* Filter bar — hidden when surveys tab is showing custom role-specific content */}
       {!(activeTab === 'surveys' && customSurveysContent) && <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-border bg-surface/40">
@@ -909,21 +1162,29 @@ function TechSurveysContent({ surveys, showPriorityLock }: { surveys: Survey[]; 
 // ─── Admin View ─────────────────────────────────────────────────────────────
 
 function AdminView() {
-  const completed   = ALL_SURVEYS.filter(s => s.status === 'completed').length
-  const inProgress  = ALL_SURVEYS.filter(s => s.status === 'in_progress').length
-  const overdue     = ALL_SURVEYS.filter(s => s.status === 'overdue').length
-  const unassigned  = ALL_SURVEYS.filter(s => s.status === 'unassigned').length
-  const rate        = Math.round((completed / ALL_SURVEYS.length) * 100)
+  const { config, addMetric, removeMetric, resetContext } = useKpiConfig('admin')
+  const data: KpiData = { surveys: ALL_SURVEYS, scans: SCANS, siteVisits: SITE_VISITS, sites: ALL_SITES }
+
+  const completed  = ALL_SURVEYS.filter(s => s.status === 'completed').length
+  const unassigned = ALL_SURVEYS.filter(s => s.status === 'unassigned').length
+  const overdue    = ALL_SURVEYS.filter(s => s.status === 'overdue').length
+  const rate       = Math.round((completed / ALL_SURVEYS.length) * 100)
+
+  const kpiSection = (ctx: KpiContext, registry: MetricDef[]) => (
+    <KpiSection
+      variant="tab"
+      context={ctx}
+      metrics={registry}
+      activeIds={config[ctx]}
+      data={data}
+      onAdd={id => addMetric(ctx, id)}
+      onRemove={id => removeMetric(ctx, id)}
+      onReset={() => resetContext(ctx)}
+    />
+  )
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="Total Surveys" value={ALL_SURVEYS.length} icon={<ClipboardCheck size={16} />} color="text-accent" />
-        <KpiCard label="Completed"     value={completed}          icon={<CheckCircle2 size={16} />}  color="text-emerald-400" />
-        <KpiCard label="In Progress"   value={inProgress}         icon={<TrendingUp size={16} />}    color="text-blue-400" />
-        <KpiCard label="Overdue"       value={overdue}            icon={<AlertCircle size={16} />}   color="text-red-400" />
-      </div>
-
       <div className="rounded-xl border border-border bg-card px-5 py-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-text-muted text-xs">Overall Completion Rate</span>
@@ -936,7 +1197,10 @@ function AdminView() {
         </div>
       </div>
 
-      <DashboardTabs surveys={ALL_SURVEYS} scans={SCANS} siteVisits={SITE_VISITS} sites={ALL_SITES} />
+      <DashboardTabs
+        surveys={ALL_SURVEYS} scans={SCANS} siteVisits={SITE_VISITS} sites={ALL_SITES}
+        tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
+      />
     </div>
   )
 }
@@ -944,6 +1208,9 @@ function AdminView() {
 // ─── Org Owner View ─────────────────────────────────────────────────────────
 
 function OrgOwnerView() {
+  const { config, addMetric, removeMetric, resetContext } = useKpiConfig('org_owner', [])
+  const data: KpiData = { surveys: ORG_SURVEYS, scans: ORG_SCANS, siteVisits: ORG_VISITS, sites: ORG_SITES }
+
   const orgStats = ORG_FILTER.map(org => {
     const s = ORG_SURVEYS.filter(x => x.organization === org)
     const completed  = s.filter(x => x.status === 'completed').length
@@ -952,6 +1219,19 @@ function OrgOwnerView() {
     const rate       = s.length ? Math.round((completed / s.length) * 100) : 0
     return { org, total: s.length, completed, inProgress, overdue, rate }
   })
+
+  const kpiSection = (ctx: KpiContext, registry: MetricDef[]) => (
+    <KpiSection
+      variant="tab"
+      context={ctx}
+      metrics={registry}
+      activeIds={config[ctx]}
+      data={data}
+      onAdd={id => addMetric(ctx, id)}
+      onRemove={id => removeMetric(ctx, id)}
+      onReset={() => resetContext(ctx)}
+    />
+  )
 
   return (
     <div className="space-y-5">
@@ -981,7 +1261,11 @@ function OrgOwnerView() {
           </div>
         ))}
       </div>
-      <DashboardTabs surveys={ORG_SURVEYS} scans={ORG_SCANS} siteVisits={ORG_VISITS} sites={ORG_SITES} />
+
+      <DashboardTabs
+        surveys={ORG_SURVEYS} scans={ORG_SCANS} siteVisits={ORG_VISITS} sites={ORG_SITES}
+        tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
+      />
     </div>
   )
 }
@@ -989,25 +1273,31 @@ function OrgOwnerView() {
 // ─── PM View ────────────────────────────────────────────────────────────────
 
 function PMView() {
-  const unassigned = ORG_SURVEYS.filter(s => s.status === 'unassigned').length
-  const inProgress = ORG_SURVEYS.filter(s => s.status === 'in_progress').length
-  const overdue    = ORG_SURVEYS.filter(s => s.status === 'overdue').length
-  const completed  = ORG_SURVEYS.filter(s => s.status === 'completed').length
+  const { config, addMetric, removeMetric, resetContext } = useKpiConfig('pm', ['sv_completed', 'sv_in_progress', 'sv_overdue', 'sv_unassigned'])
+  const data: KpiData = { surveys: ORG_SURVEYS, scans: ORG_SCANS, siteVisits: ORG_VISITS, sites: ORG_SITES }
+
+  const kpiSection = (ctx: KpiContext, registry: MetricDef[]) => (
+    <KpiSection
+      variant="tab"
+      context={ctx}
+      metrics={registry}
+      activeIds={config[ctx]}
+      data={data}
+      onAdd={id => addMetric(ctx, id)}
+      onRemove={id => removeMetric(ctx, id)}
+      onReset={() => resetContext(ctx)}
+    />
+  )
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="Needs Assignment" value={unassigned} icon={<AlertCircle size={16} />}  color="text-amber-400" />
-        <KpiCard label="In Progress"      value={inProgress} icon={<TrendingUp size={16} />}   color="text-blue-400" />
-        <KpiCard label="Overdue"          value={overdue}    icon={<XCircle size={16} />}       color="text-red-400" />
-        <KpiCard label="Completed"        value={completed}  icon={<CheckCircle2 size={16} />}  color="text-emerald-400" />
-      </div>
       <DashboardTabs
         surveys={ORG_SURVEYS}
         scans={ORG_SCANS}
         siteVisits={ORG_VISITS}
         sites={ORG_SITES}
         customSurveysContent={<PMSurveysContent surveys={ORG_SURVEYS} />}
+        tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
       />
     </div>
   )
@@ -1016,25 +1306,31 @@ function PMView() {
 // ─── Technician View (Matt) ─────────────────────────────────────────────────
 
 function TechnicianView() {
-  const inProgress = MATT_SURVEYS.filter(s => s.status === 'in_progress').length
-  const completed  = MATT_SURVEYS.filter(s => s.status === 'completed').length
-  const notStarted = MATT_SURVEYS.filter(s => s.status === 'pending').length
-  const overdue    = MATT_SURVEYS.filter(s => s.status === 'overdue').length
+  const { config, addMetric, removeMetric, resetContext } = useKpiConfig('qc_technician', ['sv_completed', 'sv_in_progress', 'sv_overdue', 'sv_pending'])
+  const data: KpiData = { surveys: MATT_SURVEYS, scans: MATT_SCANS, siteVisits: MATT_VISITS, sites: MATT_SITES }
+
+  const kpiSection = (ctx: KpiContext, registry: MetricDef[]) => (
+    <KpiSection
+      variant="tab"
+      context={ctx}
+      metrics={registry}
+      activeIds={config[ctx]}
+      data={data}
+      onAdd={id => addMetric(ctx, id)}
+      onRemove={id => removeMetric(ctx, id)}
+      onReset={() => resetContext(ctx)}
+    />
+  )
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="In Progress"  value={inProgress} icon={<TrendingUp size={16} />}   color="text-blue-400" />
-        <KpiCard label="Completed"    value={completed}  icon={<CheckCircle2 size={16} />} color="text-emerald-400" />
-        <KpiCard label="Not Started"  value={notStarted} icon={<Clock size={16} />}         color="text-amber-400" />
-        <KpiCard label="Overdue"      value={overdue}    icon={<AlertCircle size={16} />}  color="text-red-400" />
-      </div>
       <DashboardTabs
         surveys={MATT_SURVEYS}
         scans={MATT_SCANS}
         siteVisits={MATT_VISITS}
         sites={MATT_SITES}
         customSurveysContent={<TechSurveysContent surveys={MATT_SURVEYS} />}
+        tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
       />
     </div>
   )
@@ -1043,25 +1339,31 @@ function TechnicianView() {
 // ─── QC Technician 2 View (John) ────────────────────────────────────────────
 
 function QcTech2View() {
-  const inProgress = JOHN_SURVEYS.filter(s => s.status === 'in_progress').length
-  const completed  = JOHN_SURVEYS.filter(s => s.status === 'completed').length
-  const notStarted = JOHN_SURVEYS.filter(s => s.status === 'pending').length
-  const overdue    = JOHN_SURVEYS.filter(s => s.status === 'overdue').length
+  const { config, addMetric, removeMetric, resetContext } = useKpiConfig('qc_technician_2', ['sv_completed', 'sv_in_progress', 'sv_overdue', 'sv_pending'])
+  const data: KpiData = { surveys: JOHN_SURVEYS, scans: JOHN_SCANS, siteVisits: JOHN_VISITS, sites: JOHN_SITES }
+
+  const kpiSection = (ctx: KpiContext, registry: MetricDef[]) => (
+    <KpiSection
+      variant="tab"
+      context={ctx}
+      metrics={registry}
+      activeIds={config[ctx]}
+      data={data}
+      onAdd={id => addMetric(ctx, id)}
+      onRemove={id => removeMetric(ctx, id)}
+      onReset={() => resetContext(ctx)}
+    />
+  )
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="In Progress"  value={inProgress} icon={<TrendingUp size={16} />}   color="text-blue-400" />
-        <KpiCard label="Completed"    value={completed}  icon={<CheckCircle2 size={16} />} color="text-emerald-400" />
-        <KpiCard label="Not Started"  value={notStarted} icon={<Clock size={16} />}         color="text-amber-400" />
-        <KpiCard label="Overdue"      value={overdue}    icon={<AlertCircle size={16} />}  color="text-red-400" />
-      </div>
       <DashboardTabs
         surveys={JOHN_SURVEYS}
         scans={JOHN_SCANS}
         siteVisits={JOHN_VISITS}
         sites={JOHN_SITES}
         customSurveysContent={<TechSurveysContent surveys={JOHN_SURVEYS} showPriorityLock={true} />}
+        tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
       />
     </div>
   )
