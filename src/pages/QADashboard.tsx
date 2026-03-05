@@ -387,49 +387,83 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
           />
         </div>
 
-        {activeTab === 'surveys' && (
-          <>
-            <div className="relative">
-              <button
-                onClick={() => setScopeOpen(v => !v)}
-                className="flex items-center gap-1.5 bg-surface border border-border rounded-lg px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
-              >
-                <span>{currentScopeLabel}</span>
-                <ChevronDown size={11} className={`transition-transform ${scopeOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {scopeOpen && (
-                <div className="absolute left-0 top-full mt-1 w-48 bg-card border border-border rounded-xl shadow-2xl z-20 overflow-hidden">
-                  {SCOPE_OPTIONS.map(s => (
-                    <button
-                      key={s.value}
-                      onClick={() => { setScopeFilter(s.value); setScopeOpen(false) }}
-                      className={[
-                        'w-full text-left px-3 py-2 text-xs transition-colors',
-                        scopeFilter === s.value
-                          ? 'bg-surface text-accent'
-                          : 'text-text-secondary hover:bg-surface hover:text-text-primary',
-                      ].join(' ')}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <div
-                onClick={() => setShowUnallocated(v => !v)}
-                className={[
-                  'w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0',
-                  showUnallocated ? 'bg-accent border-accent' : 'bg-surface border-border hover:border-accent/60',
-                ].join(' ')}
-              >
-                {showUnallocated && <span className="text-white text-[9px] font-bold leading-none">✓</span>}
+        {/* Scope filter — surveys + site_visits tabs */}
+        {(activeTab === 'surveys' || activeTab === 'site_visits') && (
+          <div className="relative">
+            <button
+              onClick={() => setScopeOpen(v => !v)}
+              className="flex items-center gap-1.5 bg-surface border border-border rounded-lg px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
+            >
+              <span>{currentScopeLabel}</span>
+              <ChevronDown size={11} className={`transition-transform ${scopeOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {scopeOpen && (
+              <div className="absolute left-0 top-full mt-1 w-48 bg-card border border-border rounded-xl shadow-2xl z-20 overflow-hidden">
+                {SCOPE_OPTIONS.map(s => (
+                  <button
+                    key={s.value}
+                    onClick={() => { setScopeFilter(s.value); setScopeOpen(false) }}
+                    className={[
+                      'w-full text-left px-3 py-2 text-xs transition-colors',
+                      scopeFilter === s.value
+                        ? 'bg-surface text-accent'
+                        : 'text-text-secondary hover:bg-surface hover:text-text-primary',
+                    ].join(' ')}
+                  >
+                    {s.label}
+                  </button>
+                ))}
               </div>
-              <span className="text-xs text-text-secondary">Show unallocated surveys only</span>
-            </label>
-          </>
+            )}
+          </div>
+        )}
+
+        {/* Unallocated surveys toggle */}
+        {activeTab === 'surveys' && (
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div
+              onClick={() => setShowUnallocated(v => !v)}
+              className={[
+                'w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0',
+                showUnallocated ? 'bg-accent border-accent' : 'bg-surface border-border hover:border-accent/60',
+              ].join(' ')}
+            >
+              {showUnallocated && <span className="text-white text-[9px] font-bold leading-none">✓</span>}
+            </div>
+            <span className="text-xs text-text-secondary">Show unallocated surveys only</span>
+          </label>
+        )}
+
+        {/* Unallocated scans toggle */}
+        {activeTab === 'scans' && (
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div
+              onClick={() => setShowUnallocatedScans(v => !v)}
+              className={[
+                'w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0',
+                showUnallocatedScans ? 'bg-accent border-accent' : 'bg-surface border-border hover:border-accent/60',
+              ].join(' ')}
+            >
+              {showUnallocatedScans && <span className="text-white text-[9px] font-bold leading-none">✓</span>}
+            </div>
+            <span className="text-xs text-text-secondary">Show unallocated scans only</span>
+          </label>
+        )}
+
+        {/* Unprocessed site visits toggle */}
+        {activeTab === 'site_visits' && (
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div
+              onClick={() => setShowUnprocessed(v => !v)}
+              className={[
+                'w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0',
+                showUnprocessed ? 'bg-accent border-accent' : 'bg-surface border-border hover:border-accent/60',
+              ].join(' ')}
+            >
+              {showUnprocessed && <span className="text-white text-[9px] font-bold leading-none">✓</span>}
+            </div>
+            <span className="text-xs text-text-secondary">Show unprocessed site visits only</span>
+          </label>
         )}
       </div>}
 
@@ -486,12 +520,10 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
             <thead>
               <tr className="bg-surface border-b border-border">
                 <th className="px-3 py-2.5 w-8"><Checkbox checked={allSelected} onClick={toggleAll} /></th>
-                <th className={thClass}>Survey</th>
-                <th className={thClass}>Site ID</th>
-                <th className={thClass}>Site Name</th>
-                <th className={thClass}>Organization</th>
-                <th className={thClass}>Technician</th>
+                <th className={thClass}>Name</th>
+                <th className={thClass}>Site Visit</th>
                 <th className={thClass}>Files</th>
+                <th className={thClass}>Organization</th>
                 <th className={thClass}>
                   <span className="flex items-center gap-1">Created <ChevronDown size={10} /></span>
                 </th>
@@ -502,18 +534,18 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
               {filteredScans.map(s => (
                 <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface/40">
                   <td className={tdClass}><Checkbox checked={selected.has(s.id)} onClick={() => toggleRow(s.id)} /></td>
-                  <td className={`${tdClass} text-accent font-medium max-w-[180px] truncate`}>{s.survey}</td>
-                  <td className={`${tdClass} text-text-muted font-mono`}>{s.siteId}</td>
-                  <td className={`${tdClass} text-text-primary`}>{s.siteName}</td>
-                  <td className={`${tdClass} text-text-secondary`}>{s.organization}</td>
-                  <td className={`${tdClass} text-text-secondary`}>{s.technician}</td>
+                  <td className={`${tdClass} text-accent font-medium max-w-[220px] truncate`}>{s.name}</td>
+                  <td className={`${tdClass} text-text-secondary`}>
+                    {s.siteVisit ?? <span className="text-text-muted italic">Unallocated</span>}
+                  </td>
                   <td className={`${tdClass} text-text-primary font-medium`}>{s.files}</td>
+                  <td className={`${tdClass} text-text-secondary`}>{s.organization}</td>
                   <td className={`${tdClass} text-text-muted whitespace-nowrap`}>{s.createdDate}</td>
                   <td className={tdClass}><ActionCell /></td>
                 </tr>
               ))}
               {filteredScans.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-text-muted">No scans found.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-text-muted">No scans found.</td></tr>
               )}
             </tbody>
           </table>
@@ -527,13 +559,14 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
                 <th className="px-3 py-2.5 w-8"><Checkbox checked={allSelected} onClick={toggleAll} /></th>
                 <th className={thClass}>Name</th>
                 <th className={thClass}>Site ID</th>
-                <th className={thClass}>Site Name</th>
                 <th className={thClass}>Organization</th>
                 <th className={thClass}>Assignee</th>
                 <th className={thClass}>Status</th>
                 <th className={thClass}>
                   <span className="flex items-center gap-1">Scheduled <ChevronDown size={10} /></span>
                 </th>
+                <th className={thClass}>Processing Status</th>
+                <th className={thClass}>Processed By</th>
                 <th className="px-3 py-2.5 w-16" />
               </tr>
             </thead>
@@ -541,18 +574,30 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
               {filteredVisits.map(s => (
                 <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface/40">
                   <td className={tdClass}><Checkbox checked={selected.has(s.id)} onClick={() => toggleRow(s.id)} /></td>
-                  <td className={`${tdClass} text-accent font-medium`}>{s.name}</td>
+                  <td className={`${tdClass} text-accent font-medium max-w-[180px] truncate`}>{s.name}</td>
                   <td className={`${tdClass} text-text-muted font-mono`}>{s.siteId}</td>
-                  <td className={`${tdClass} text-text-primary`}>{s.siteName}</td>
                   <td className={`${tdClass} text-text-secondary`}>{s.organization}</td>
                   <td className={`${tdClass} text-text-secondary`}>{s.assignee}</td>
                   <td className={tdClass}><VisitBadge status={s.status} /></td>
                   <td className={`${tdClass} text-text-muted whitespace-nowrap`}>{s.scheduledDate}</td>
+                  <td className={tdClass}>
+                    {s.processed
+                      ? <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border text-emerald-400 bg-emerald-400/10 border-emerald-400/30">
+                          Processed · {s.processingDate}
+                        </span>
+                      : <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border text-amber-400 bg-amber-400/10 border-amber-400/30">
+                          Unprocessed
+                        </span>
+                    }
+                  </td>
+                  <td className={`${tdClass} text-text-secondary`}>
+                    {s.processedBy ?? <span className="text-text-muted italic">—</span>}
+                  </td>
                   <td className={tdClass}><ActionCell /></td>
                 </tr>
               ))}
               {filteredVisits.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-text-muted">No site visits found.</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-text-muted">No site visits found.</td></tr>
               )}
             </tbody>
           </table>
@@ -563,28 +608,38 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-surface border-b border-border">
-                <th className="px-3 py-2.5 w-8"><div className="w-3.5 h-3.5 rounded border border-border bg-card" /></th>
+                <th className="px-3 py-2.5 w-8"><Checkbox checked={allSelected} onClick={toggleAll} /></th>
+                <th className={thClass}>Name</th>
                 <th className={thClass}>Site ID</th>
-                <th className={thClass}>Site Name</th>
                 <th className={thClass}>Organization</th>
-                <th className={thClass}>Tower Type</th>
-                <th className={thClass}>Surveys</th>
                 <th className={thClass}>
-                  <span className="flex items-center gap-1">Last Survey <ChevronDown size={10} /></span>
+                  <span className="flex items-center gap-1">Created <ChevronDown size={10} /></span>
                 </th>
+                <th className={thClass}>Last Site Visit</th>
+                <th className={thClass}>Last Process Time</th>
                 <th className="px-3 py-2.5 w-16" />
               </tr>
             </thead>
             <tbody>
               {filteredSites.map(s => (
                 <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface/40">
-                  <td className={tdClass}><div className="w-3.5 h-3.5 rounded border border-border bg-card" /></td>
-                  <td className={`${tdClass} text-text-muted font-mono`}>{s.siteId}</td>
+                  <td className={tdClass}><Checkbox checked={selected.has(s.id)} onClick={() => toggleRow(s.id)} /></td>
                   <td className={`${tdClass} text-accent font-medium`}>{s.siteName}</td>
+                  <td className={`${tdClass} text-text-muted font-mono`}>{s.siteId}</td>
                   <td className={`${tdClass} text-text-secondary`}>{s.organization}</td>
-                  <td className={`${tdClass} text-text-secondary`}>{s.towerType}</td>
-                  <td className={`${tdClass} text-text-primary font-medium`}>{s.totalSurveys}</td>
-                  <td className={`${tdClass} text-text-muted whitespace-nowrap`}>{s.lastSurveyDate}</td>
+                  <td className={`${tdClass} text-text-muted whitespace-nowrap`}>{s.createdDate}</td>
+                  <td className={`${tdClass} text-text-muted whitespace-nowrap`}>
+                    {s.lastSiteVisit ?? <span className="italic">None</span>}
+                  </td>
+                  <td className={tdClass}>
+                    {s.isOverdue
+                      ? <span className="flex items-center gap-1 text-red-400">
+                          <AlertCircle size={11} />
+                          {s.lastProcessTime ? s.lastProcessTime : <span className="italic">Never processed</span>}
+                        </span>
+                      : <span className="text-text-muted">{s.lastProcessTime ?? '—'}</span>
+                    }
+                  </td>
                   <td className={tdClass}><ActionCell /></td>
                 </tr>
               ))}
