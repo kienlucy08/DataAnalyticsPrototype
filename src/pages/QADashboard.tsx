@@ -249,7 +249,7 @@ const DEFAULT_KPI_CONFIG: Record<KpiContext, string[]> = {
 }
 
 // Bump this when role defaults change — clears stale cached configs
-const KPI_CONFIG_VERSION = 3
+const KPI_CONFIG_VERSION = 4
 
 function useKpiConfig(roleKey: string, defaultOverrides?: Partial<Record<KpiContext, string[]>>) {
   const effectiveDefaults: Record<KpiContext, string[]> = {
@@ -257,7 +257,7 @@ function useKpiConfig(roleKey: string, defaultOverrides?: Partial<Record<KpiCont
     ...defaultOverrides,
   }
   const storageKey = `fieldsync_kpi_${roleKey}`
-  const versionKey = `fieldsync_kpi_v`
+  const versionKey = `fieldsync_kpi_v_${roleKey}`
   const [config, setConfig] = useState<Record<KpiContext, string[]>>(() => {
     try {
       // If the stored version is stale, reset to fresh defaults
@@ -1926,7 +1926,7 @@ function AdminView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSele
 // ─── Org Owner View ─────────────────────────────────────────────────────────
 
 function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSelectSurvey }: RoleViewProps) {
-  const { config, addMetric, removeMetric, resetContext } = useKpiConfig('org_owner', { surveys: [] })
+  const { config, addMetric, removeMetric, resetContext } = useKpiConfig('org_owner', { surveys: [], scans: [], site_visits: [], sites: [] })
   const applyOrg = <T extends { organization: string }>(arr: T[]) =>
     orgFilter === 'all' ? arr : arr.filter(s => s.organization === orgFilter)
 
