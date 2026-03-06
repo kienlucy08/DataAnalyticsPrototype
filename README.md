@@ -22,6 +22,67 @@ A structured operations view that provides a clear paper trail for every survey,
 
 ---
 
+## Demo Guide
+
+**Route:** `/demo`
+
+The Demo Guide is a built-in presenter walkthrough designed for live stakeholder demos. It structures the full prototype into a scripted narrative across five acts, with step-by-step instructions for what to click and exactly what to say at each point.
+
+### Why It Exists
+
+The prototype has two distinct tools that are more powerful together than apart. Without a walkthrough it's easy to demo them in isolation and miss the connective story — the moment where a metric created in analytics becomes a live KPI card in daily operations. The Demo Guide ensures that bridge lands clearly, even in front of a skeptical audience.
+
+### The Five Acts
+
+| Act | Title | Steps | What It Covers |
+|---|---|---|---|
+| **1** | The Problem Today | 1 | Set context — show what FieldSync already does and what's missing |
+| **2** | Custom Data Analytics | 6 | Ask questions, get inline charts, save to dashboard, show role enforcement |
+| **3** | The Bridge | 1 | Pin an analytics metric directly into a QA Dashboard KPI row |
+| **4** | QA Operations Dashboard | 8 | Assignment flow, technician views, priority locking, survey detail, mark complete |
+| **5** | The Full Picture | 3 | Org Owner view, KPI customization, value proposition close |
+
+### How to Use the Overlay
+
+Starting the demo from the Guide page launches a **floating step overlay** (bottom-right corner) that persists across all page navigation. You never have to return to the guide page mid-demo — just follow the overlay.
+
+Each step in the overlay shows:
+- **Act badge** — which act you're in, color-coded by act
+- **Role** — which persona to be switched to for this step
+- **Do This** — the exact navigation or click action to perform
+- **Say This** — the key talking point to deliver, in quotation marks, ready to read aloud
+
+The overlay has **Prev / Next** navigation, a progress bar across all 19 steps, and step dots that fill as you advance. It can be **minimized** to a slim strip at any time (useful when you need screen space for the demo action) and restored instantly.
+
+### Presenter Tips
+
+**Before the demo:**
+- Open the `/demo` page and read through each step's "Say This" talking point — especially Acts 3 and 5
+- Set the role to **Admin (Lucy)** before you start — the demo begins from the Admin perspective
+- Pre-load the Data Analytics page with one question already answered so Act 2 isn't waiting on the server
+- Know your audience: if they're technically skeptical, lean into the two-layer access enforcement in Step 7; if they're operationally focused, spend more time in Acts 4 and 5
+
+**During the demo:**
+- Let the audience react before pressing Next — the bridge moment (Act 3, Step 8) is the most impactful point; give it space
+- If a question interrupts the flow, use the **minimize** button to hide the overlay, handle the question, then restore and continue
+- You can jump to any specific step from the Guide page's step cards — useful if someone asks to "go back to the part where..."
+- The "Say This" quotes are scripted for a critical audience — they preempt the most common objections ("is this just a mock?", "can admins see everything?", "what happens to the data?")
+
+**Handling a tough boss:**
+- Step 3 (live query): *"This is a live query against real data — not a mock."* Say this before they can ask.
+- Step 7 (role enforcement): Show the technician being blocked before they get through the UI. This proves the system can't be worked around by a savvy user.
+- Step 8 (the bridge): This is where the ROI story lands. Make sure the metric you saved in Act 2 is visible in the KPI dropdown before you get here.
+- Step 13 (real-time state): When Matt sees Susan's assignment instantly, this proves the data model is correct — pre-empt the "is this hardcoded?" question by switching roles live.
+
+### Starting a Demo Mid-Way
+
+Each step card on the `/demo` page can be expanded to reveal full "Do This" and "Say This" content, and has a **Start Demo from Step N** button. Use this if:
+- You want to skip Act 1 (context) and jump directly into the tool demos
+- You're doing a shortened 10-minute version starting from Act 3 (the bridge)
+- Someone wants to re-watch a specific section after the main demo ends
+
+---
+
 ## Role Switcher
 
 Use the role switcher in the top navigation bar to switch between all five user personas. This is intentional for prototype demonstration — it lets stakeholders explore every perspective in a single session without authentication.
@@ -83,11 +144,36 @@ This creates a clear audit trail across the full lifecycle of field work — fro
 
 **Org Owner** — Per-organization health cards showing each org's total surveys, completed, in-progress, overdue, and completion rate. Clean overview by default — no KPI cards at the top so the page doesn't feel cluttered. Users can add KPI cards if they want (see Customizable KPI Cards below).
 
-**Project Manager** — Two focused tables: *Needs Assignment* (unassigned surveys with inline technician assignment dropdown) and *Assigned Surveys* (active work with progress bars and status badges). Defaults to metrics most useful for workload management: Completed, In Progress, Overdue, Unassigned.
+**Project Manager** — Two modes toggled by a pill switcher in the header:
+- *Assign Work* (default) — Two focused tables: *Needs Assignment* (unassigned surveys sorted by priority, with inline technician assignment dropdown) and *Assigned Surveys* (active work with progress bars and status badges). KPI cards reflect the full assigned-work picture.
+- *My Work* — Switches to the same priority-card layout used by technicians, scoped to surveys assigned to Susan Smith. KPI cards recalculate for Susan's personal workload only. A badge on the "My Work" tab shows how many active surveys she has. This separates the "managing others" and "doing your own work" contexts so neither view pollutes the other.
 
 **QC Technician (Matt)** — Personal view only. Active surveys shown as priority-ordered cards with a priority-lock system: high-priority surveys must be addressed before lower-priority ones are accessible. Completed surveys shown in a history table.
 
 **QC Technician 2 (John)** — Same technician view with priority-lock. Scoped to John's own surveys, scans, and site visits.
+
+#### Survey Assignment
+
+From the PM *Assign Work* view, any unassigned survey can be assigned to a technician or to Susan herself via an inline dropdown + modal. Assigning a survey that was previously unassigned automatically moves its status from `Unassigned` to `Not Started`. Reassigning an already-assigned survey retains its current status. Both actions generate a toast notification confirming the change.
+
+#### Priority Lock & Unblock
+
+Technician survey cards are sorted by effective priority. When a technician has any **High** priority or **Overdue** surveys, all lower-priority surveys are shown as locked (grayed out, not clickable). This enforces the rule that critical work gets addressed first.
+
+If field conditions genuinely require working out of sequence, technicians can click **Unblock** on any locked card. A confirmation modal explains which higher-priority surveys are currently blocking it and asks for explicit confirmation. The unblock is session-only — it doesn't persist and doesn't modify the underlying priority data. This makes the override a documented, intentional decision rather than an invisible workaround.
+
+#### Survey Detail Page
+
+Clicking any survey name (in any role view — PM tables, technician cards, completed history rows) opens a full-screen survey detail overlay. This simulates the actual inspection workflow:
+
+- **Header** — survey name, scope type, progress bar ("N of M fields marked"), Save button, Mark as Complete button
+- **Site info card** — site name, organization, due date, assigned technician, status badge, map placeholder
+- **AI Analysis** — collapsible toggle that would surface Claude-generated analysis for this survey's data
+- **Accordion sections** — scope-specific sections (e.g. Facilities inspections have *Guy Compounds*, *Guy Photos*, *Deficiencies*; Tower inspections have *Climbing Protocol*, *Site Photos*). Each section is toggled independently.
+- **Field checklists** — check, photo, and measurement fields within each section. Checking a field updates the progress bar in real time.
+- **Mark as Complete** — triggers a confirmation modal. On confirm, the survey status becomes `Completed` and a completion date is stamped. The change propagates immediately — switch to the PM or Admin view and the survey appears as Completed.
+
+Survey detail state (which fields are checked, which sections are open) is local to the current session and does not persist.
 
 ---
 
@@ -128,13 +214,15 @@ Role defaults are tuned to surface the signals most relevant to each person's re
 
 | Role | Survey Tab Default | Reasoning |
 |---|---|---|
-| Admin | Total, Completed, In Progress, Overdue | Org-wide health overview |
-| Org Owner | *(none by default)* | Per-org breakdown cards already cover this; avoid clutter |
-| Project Manager | Completed, In Progress, Overdue, **Unassigned** | Assignment backlog is the primary PM concern |
-| QC Technician | Completed, In Progress, Overdue, **Not Started** | Personal progress signals |
-| QC Technician 2 | Completed, In Progress, Overdue, **Not Started** | Same as above |
+| Admin | Total, Completed, In Progress, Overdue | Org-wide health overview — all four signals matter at this level |
+| Org Owner | *(none by default)* | Per-org health cards already surface the key numbers; KPI row would be redundant clutter |
+| Project Manager | *(none by default)* | PM's most relevant metrics depend on how they use the tool; let them build their own set |
+| QC Technician | *(none by default)* | Personal card layout already communicates workload; add KPIs only if desired |
+| QC Technician 2 | *(none by default)* | Same as above |
 
-Scans, Site Visits, and Sites tabs use the same defaults across all roles since those tables are less role-differentiated.
+PM and technician roles intentionally start with no KPI cards. Users can add exactly the metrics they care about from the registry (or from their Analytics Dashboard) — building a signal set that's genuinely useful rather than one that was designed for a different person's workflow. Preferences persist per-role in localStorage.
+
+Scans, Site Visits, and Sites tabs follow the same pattern — Admin gets sensible defaults, all other roles start empty.
 
 #### Available Metrics by Tab
 
@@ -236,17 +324,20 @@ To enable Power BI embeds, fill in `src/config/powerbi.config.ts` with real `rep
 ```
 src/
   pages/
-    QADashboard.tsx        # QA operations dashboard — role views, KPI system, data tables
+    QADashboard.tsx        # QA operations dashboard — all role views, KPI system, survey detail, assignment
     Dashboard.tsx          # My Custom Dashboard — drag/resize saved chart widgets
     DataAnalytics.tsx      # AI analytics chat + inline chart preview
+    DemoGuide.tsx          # Demo Guide landing page + DemoStepOverlay floating component
   components/
     charts/ChartRenderer.tsx     # Renders bar/line/area/pie/metric from widget config
     mcp/AnalyticsOutput.tsx      # Chat response display + save/dashboard action buttons
     layout/Sidebar.tsx           # Role-gated navigation
     layout/TopNav.tsx            # Role switcher dropdown
+    layout/Layout.tsx            # App shell — mounts DemoStepOverlay
   context/
     RoleContext.tsx         # Global role state
     DashboardContext.tsx    # Saved dashboard widgets (localStorage, per-role)
+    DemoContext.tsx         # Demo walkthrough state — DEMO_STEPS, DemoProvider, useDemo()
   types/
     dashboard.ts            # DashboardWidget, ChartData, ChartType
   config/
