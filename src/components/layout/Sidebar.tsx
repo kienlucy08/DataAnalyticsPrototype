@@ -11,6 +11,7 @@ import {
   Building2,
   BarChart3,
   Monitor,
+  Zap,
 } from 'lucide-react'
 import { useRole } from '../../context/RoleContext'
 import type { Role } from '../../context/RoleContext'
@@ -31,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Templates',     path: '/templates',     icon: <ClipboardList size={18} /> },
   { label: 'Import',        path: '/import',        icon: <Upload size={18} /> },
   { label: 'Organization',  path: '/organization',  icon: <Building2 size={18} /> },
+  { label: 'Demo Guide',    path: '/demo',           icon: <Zap size={18} /> },
 ]
 
 const ANALYTICS_ITEMS: NavItem[] = [

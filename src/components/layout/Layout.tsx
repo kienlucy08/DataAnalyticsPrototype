@@ -2,6 +2,7 @@ import React from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopNav from './TopNav'
+import { DemoStepOverlay } from '../../pages/DemoGuide'
 
 const Layout: React.FC = () => (
   <div className="flex min-h-screen bg-surface">
@@ -12,6 +13,7 @@ const Layout: React.FC = () => (
         <Outlet />
       </main>
     </div>
+    <DemoStepOverlay />
   </div>
 )
 

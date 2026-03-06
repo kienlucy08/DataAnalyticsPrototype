@@ -70,7 +70,7 @@ A workflow-oriented survey management view showing the live operational status o
 
 Every item in the system carries enough metadata to answer: *who is responsible, what stage is it at, and is it on time?*
 
-- **Surveys** — status (`Unassigned → Pending → In Progress → Completed / Overdue`), assigned technician, priority (`High / Medium / Low`, auto-elevated to High when overdue), progress percentage, created date, due date, completed date
+- **Surveys** — status (`Unassigned → Not Started → In Progress → Completed / Overdue`), assigned technician, priority (`High / Medium / Low`, auto-elevated to High when overdue), progress percentage, created date, due date, completed date
 - **Scans** — technician, site, organization, file count, site visit linkage (or "unallocated" if not yet linked)
 - **Site Visits** — assignee, scheduled date, processing status, processed-by name, and processing date
 - **Sites** — last visit date, last processing timestamp, overdue flag
@@ -131,15 +131,15 @@ Role defaults are tuned to surface the signals most relevant to each person's re
 | Admin | Total, Completed, In Progress, Overdue | Org-wide health overview |
 | Org Owner | *(none by default)* | Per-org breakdown cards already cover this; avoid clutter |
 | Project Manager | Completed, In Progress, Overdue, **Unassigned** | Assignment backlog is the primary PM concern |
-| QC Technician | Completed, In Progress, Overdue, **Pending** | Personal progress signals; pending = not yet started |
-| QC Technician 2 | Completed, In Progress, Overdue, **Pending** | Same as above |
+| QC Technician | Completed, In Progress, Overdue, **Not Started** | Personal progress signals |
+| QC Technician 2 | Completed, In Progress, Overdue, **Not Started** | Same as above |
 
 Scans, Site Visits, and Sites tabs use the same defaults across all roles since those tables are less role-differentiated.
 
 #### Available Metrics by Tab
 
 **Surveys**
-Total Surveys · Completed · In Progress · Overdue · Unassigned · Pending (Not Started) · Completion %
+Total Surveys · Completed · In Progress · Overdue · Unassigned · Not Started · Completion %
 
 **Scans**
 Total Scans · Total Files · Unallocated Scans · Unique Sites · Technicians
