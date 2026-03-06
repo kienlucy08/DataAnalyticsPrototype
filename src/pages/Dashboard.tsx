@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { GridLayout, useContainerWidth } from 'react-grid-layout'
 import type { Layout, LayoutItem } from 'react-grid-layout'
@@ -19,6 +19,22 @@ const Dashboard: React.FC = () => {
   const [saveInputOpen, setSaveInputOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [gridKey, setGridKey] = useState(0)
+  const skipNextLayoutChange = useRef(false)
+
+  const handleLoadDashboard = (id: string) => {
+    skipNextLayoutChange.current = true
+    loadDashboard(id)
+    setGridKey(k => k + 1)
+  }
+
+  const handleLayoutChange = (layouts: Layout) => {
+    if (skipNextLayoutChange.current) {
+      skipNextLayoutChange.current = false
+      return
+    }
+    updateLayouts(layouts)
+  }
 
   const layout = useMemo<Layout>(() =>
     widgets.map<LayoutItem>(w => ({
@@ -131,12 +147,13 @@ const Dashboard: React.FC = () => {
       {widgets.length > 0 && (
         <div ref={containerRef as React.RefObject<HTMLDivElement>}>
           <GridLayout
+            key={gridKey}
             width={width}
             layout={layout}
             gridConfig={{ cols: 12, rowHeight: 70 }}
             dragConfig={{ handle: '.drag-handle' }}
             resizeConfig={{ handles: ['se'] }}
-            onLayoutChange={updateLayouts}
+            onLayoutChange={handleLayoutChange}
             className="layout"
           >
             {widgets.map(widget => (
@@ -197,7 +214,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-4">
                     <button
-                      onClick={() => loadDashboard(saved.id)}
+                      onClick={() => handleLoadDashboard(saved.id)}
                       className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover border border-accent/30 hover:border-accent/60 px-2.5 py-1.5 rounded-lg transition-colors"
                     >
                       <RotateCcw size={12} />
