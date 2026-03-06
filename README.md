@@ -278,15 +278,35 @@ A personal drag-and-resize dashboard where charts and metrics saved from the Cus
 
 ## Getting Started
 
-### 1. Clone the MCP Server
+### 1. Set up the MCP Server
 
 The AI analytics feature requires a separate MCP server repository. Clone it somewhere on your machine:
 
 ```bash
 git clone https://github.com/kienlucy08/mcp_testing
+cd mcp_testing
 ```
 
-Note the absolute path to where you cloned it — you'll need it for the environment variable below.
+The MCP server is a Python application and needs its own dependencies and `.env` file.
+
+**Install Python dependencies:**
+
+```bash
+pip install mcp psycopg2-binary python-dotenv requests
+```
+
+**Create a `.env` file inside the `mcp_testing` directory:**
+
+```
+url=your_postgres_host
+postgres_user=your_db_username
+postgres_pass=your_db_password
+weather_api_key=your_openweathermap_key   # optional, only needed for weather queries
+```
+
+The database must be PostgreSQL with the PostGIS extension enabled (the server uses spatial queries). Port defaults to `5432`, database name defaults to `postgres`, SSL mode is `require`.
+
+Note the absolute path to the `mcp_testing` directory — you'll need it for the next step.
 
 ### 2. Install dependencies
 
