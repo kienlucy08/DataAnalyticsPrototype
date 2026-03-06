@@ -26,60 +26,39 @@ A structured operations view that provides a clear paper trail for every survey,
 
 **Route:** `/demo`
 
-The Demo Guide is a built-in presenter walkthrough designed for live stakeholder demos. It structures the full prototype into a scripted narrative across five acts, with step-by-step instructions for what to click and exactly what to say at each point.
+The Demo Guide is a step-by-step interactive walkthrough of the full prototype. It guides you through every feature in a structured sequence so you can understand what each part does, how to interact with it, and how the two tools connect to each other.
 
-### Why It Exists
+### What It Covers
 
-The prototype has two distinct tools that are more powerful together than apart. Without a walkthrough it's easy to demo them in isolation and miss the connective story — the moment where a metric created in analytics becomes a live KPI card in daily operations. The Demo Guide ensures that bridge lands clearly, even in front of a skeptical audience.
-
-### The Five Acts
+19 steps organized into five acts, covering the complete feature set in a logical order:
 
 | Act | Title | Steps | What It Covers |
 |---|---|---|---|
-| **1** | The Problem Today | 1 | Set context — show what FieldSync already does and what's missing |
-| **2** | Custom Data Analytics | 6 | Ask questions, get inline charts, save to dashboard, show role enforcement |
-| **3** | The Bridge | 1 | Pin an analytics metric directly into a QA Dashboard KPI row |
-| **4** | QA Operations Dashboard | 8 | Assignment flow, technician views, priority locking, survey detail, mark complete |
-| **5** | The Full Picture | 3 | Org Owner view, KPI customization, value proposition close |
+| **1** | The Problem Today | 1 | Orientation — what FieldSync already does and where the new tools fit in |
+| **2** | Custom Data Analytics | 6 | Asking questions, viewing inline charts, saving to dashboard, role access enforcement |
+| **3** | The Bridge | 1 | Pinning an analytics metric directly into a QA Dashboard KPI row |
+| **4** | QA Operations Dashboard | 8 | Assignment workflow, technician views, priority locking, survey detail page, completing a survey |
+| **5** | The Full Picture | 3 | Org Owner view, KPI customization, overview of how it all connects |
 
-### How to Use the Overlay
+### How to Use It
 
-Starting the demo from the Guide page launches a **floating step overlay** (bottom-right corner) that persists across all page navigation. You never have to return to the guide page mid-demo — just follow the overlay.
+**From the Demo Guide page:**
+- Click **Start Full Demo** to begin from Step 1
+- Expand any step card to read the full instructions and see what that step demonstrates
+- Click **Start Demo from Step N** on any card to jump directly to that step
 
-Each step in the overlay shows:
-- **Act badge** — which act you're in, color-coded by act
-- **Role** — which persona to be switched to for this step
-- **Do This** — the exact navigation or click action to perform
-- **Say This** — the key talking point to deliver, in quotation marks, ready to read aloud
+**The floating overlay:**
+Once a walkthrough is started, a floating panel appears in the bottom-right corner and stays there as you navigate between pages. Each step in the overlay shows:
+- **Act badge** — color-coded to show which act you're in
+- **Role** — which persona to switch to in the top-right role switcher before performing this step
+- **Do This** — the exact action to take (what to click, where to navigate)
+- **Key Insight** — what this step is demonstrating and why it matters
 
-The overlay has **Prev / Next** navigation, a progress bar across all 19 steps, and step dots that fill as you advance. It can be **minimized** to a slim strip at any time (useful when you need screen space for the demo action) and restored instantly.
+Use **Prev / Next** to move between steps. The progress bar and step dots show where you are across all 19 steps. Click the **minimize** button to collapse the overlay to a slim strip when you need the full screen — click it again to restore.
 
-### Presenter Tips
+### Jumping to a Specific Section
 
-**Before the demo:**
-- Open the `/demo` page and read through each step's "Say This" talking point — especially Acts 3 and 5
-- Set the role to **Admin (Lucy)** before you start — the demo begins from the Admin perspective
-- Pre-load the Data Analytics page with one question already answered so Act 2 isn't waiting on the server
-- Know your audience: if they're technically skeptical, lean into the two-layer access enforcement in Step 7; if they're operationally focused, spend more time in Acts 4 and 5
-
-**During the demo:**
-- Let the audience react before pressing Next — the bridge moment (Act 3, Step 8) is the most impactful point; give it space
-- If a question interrupts the flow, use the **minimize** button to hide the overlay, handle the question, then restore and continue
-- You can jump to any specific step from the Guide page's step cards — useful if someone asks to "go back to the part where..."
-- The "Say This" quotes are scripted for a critical audience — they preempt the most common objections ("is this just a mock?", "can admins see everything?", "what happens to the data?")
-
-**Handling a tough boss:**
-- Step 3 (live query): *"This is a live query against real data — not a mock."* Say this before they can ask.
-- Step 7 (role enforcement): Show the technician being blocked before they get through the UI. This proves the system can't be worked around by a savvy user.
-- Step 8 (the bridge): This is where the ROI story lands. Make sure the metric you saved in Act 2 is visible in the KPI dropdown before you get here.
-- Step 13 (real-time state): When Matt sees Susan's assignment instantly, this proves the data model is correct — pre-empt the "is this hardcoded?" question by switching roles live.
-
-### Starting a Demo Mid-Way
-
-Each step card on the `/demo` page can be expanded to reveal full "Do This" and "Say This" content, and has a **Start Demo from Step N** button. Use this if:
-- You want to skip Act 1 (context) and jump directly into the tool demos
-- You're doing a shortened 10-minute version starting from Act 3 (the bridge)
-- Someone wants to re-watch a specific section after the main demo ends
+Use the act filter tabs on the Demo Guide page to show only the steps from a particular act. This is useful for revisiting a specific feature without going through the full walkthrough from the beginning — for example, jumping straight to Act 4 to walk through the survey assignment and completion flow.
 
 ---
 
@@ -152,9 +131,33 @@ This creates a clear audit trail across the full lifecycle of field work — fro
 
 **QC Technician 2 (John)** — Same technician view with priority-lock. Scoped to John's own surveys, scans, and site visits.
 
-#### Survey Assignment
+#### PM Assignment Workflow
 
-From the PM *Assign Work* view, any unassigned survey can be assigned to a technician or to Susan herself via an inline dropdown + modal. Assigning a survey that was previously unassigned automatically moves its status from `Unassigned` to `Not Started`. Reassigning an already-assigned survey retains its current status. Both actions generate a toast notification confirming the change.
+The Project Manager view is split into two distinct modes, toggled by the pill switcher at the top of the view.
+
+**Assign Work mode (default)**
+
+This is the coordination layer. Two tables sit side by side:
+
+1. *Needs Assignment* — all surveys with no assigned technician, sorted by priority (High / Overdue first). Each row has an **Assign** button that opens a modal with a technician dropdown. The PM can assign to any available technician or to themselves.
+2. *Assigned Surveys* — all surveys that have been assigned, showing their current status, progress bar, assigned technician, and due date.
+
+To walk through the full assignment flow:
+1. Switch the role to **Project Manager (Susan Smith)**
+2. In the *Needs Assignment* table, find any unassigned survey and click **Assign**
+3. Select a technician from the dropdown and click **Assign** to confirm
+4. A toast notification confirms the assignment — the survey moves from *Needs Assignment* into *Assigned Surveys*
+5. Switch to **QC Technician (Matt)** or **QC Technician 2 (John)** — the newly assigned survey appears immediately in their active work queue
+
+Status changes on assignment:
+- `Unassigned` → `Not Started` when first assigned to anyone
+- Already-assigned surveys retain their current status when reassigned to a different technician
+
+**My Work mode**
+
+Toggled by clicking the **My Work** pill. This switches the entire view to show only surveys assigned to Susan Smith, using the same priority-card layout that technicians see. KPI cards recalculate to reflect Susan's personal workload rather than the full team's.
+
+The badge on the My Work tab shows how many active surveys Susan currently has. Surveys can be clicked to open the detail page, marked as complete, and tracked the same way a technician would use their own view. This separates the management context from the personal work context — Susan can coordinate the team in Assign Work mode and then focus on her own queue in My Work mode without the two views mixing.
 
 #### Priority Lock & Unblock
 

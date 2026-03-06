@@ -209,11 +209,11 @@ const StepCard: React.FC<StepCardProps> = ({ step, globalIdx, actMeta, onStart }
               <p className="text-text-secondary text-sm leading-relaxed">{step.action}</p>
             </div>
 
-            {/* Say This */}
+            {/* Key Insight */}
             <div className="bg-surface rounded-lg p-3.5 border border-border">
               <div className="flex items-center gap-1.5 mb-2">
                 <MessageSquare size={13} className="text-emerald-400" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Say This</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Key Insight</span>
               </div>
               <p className="text-text-muted text-sm leading-relaxed italic">{step.keyMessage}</p>
             </div>
@@ -346,11 +346,11 @@ export const DemoStepOverlay: React.FC = () => {
           <p className="text-text-secondary text-xs leading-relaxed">{step.action}</p>
         </div>
 
-        {/* Say This */}
+        {/* Key Insight */}
         <div className="bg-surface rounded-lg p-3 border border-border">
           <div className="flex items-center gap-1.5 mb-1.5">
             <MessageSquare size={12} className="text-emerald-400" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Say This</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Key Insight</span>
           </div>
           <p className="text-text-muted text-xs leading-relaxed italic">{step.keyMessage}</p>
         </div>
