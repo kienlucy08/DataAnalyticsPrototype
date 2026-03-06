@@ -278,10 +278,40 @@ A personal drag-and-resize dashboard where charts and metrics saved from the Cus
 
 ## Getting Started
 
-```bash
-# Install dependencies
-npm install
+### 1. Clone the MCP Server
 
+The AI analytics feature requires a separate MCP server repository. Clone it somewhere on your machine:
+
+```bash
+git clone https://github.com/kienlucy08/mcp_testing
+```
+
+Note the absolute path to where you cloned it — you'll need it for the environment variable below.
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Configure environment variables
+
+Create a `.env` file in the root of this repository:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+MCP_SERVER_PATH=/absolute/path/to/mcp_testing
+DATABASE_URL=your_postgres_connection_string
+SERVER_PORT=3001
+```
+
+`MCP_SERVER_PATH` must be the full absolute path to the cloned `mcp_testing` directory on your machine. For example:
+- macOS/Linux: `/Users/yourname/projects/mcp_testing`
+- Windows: `C:\Users\yourname\projects\mcp_testing`
+
+### 4. Start the app
+
+```bash
 # Start both the Vite frontend and Express MCP bridge server
 npm run dev:all
 
@@ -290,14 +320,6 @@ npm run dev
 
 # Backend only (http://localhost:3001)
 npm run server
-```
-
-Required environment variables in `.env`:
-```
-ANTHROPIC_API_KEY=sk-ant-...
-MCP_SERVER_PATH=path/to/your/mcp/server
-DATABASE_URL=your_postgres_connection_string
-SERVER_PORT=3001
 ```
 
 To enable Power BI embeds, fill in `src/config/powerbi.config.ts` with real `reportId`, `embedUrl`, and `accessToken` values per role.
