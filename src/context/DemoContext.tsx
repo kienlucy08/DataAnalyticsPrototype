@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState } from 'react'
 
+export type DemoTier = 'mvp' | 'nice-to-have' | 'prototype'
+
 export interface DemoStep {
   id: number
   act: number
@@ -9,11 +11,12 @@ export interface DemoStep {
   title: string
   subtitle: string
   description: string
-  action: string            // what the presenter should physically do
-  keyMessage: string        // the value talking point to say aloud
+  action: string            // what to do on this step
+  keyMessage: string        // what this step demonstrates
   route: string             // navigate here for this step
   role: string              // set role to this for this step
   tag?: string              // e.g. 'Tool 1', 'Bridge', 'Tool 2'
+  tier: DemoTier            // mvp | nice-to-have | prototype
 }
 
 export const DEMO_STEPS: DemoStep[] = [
@@ -29,6 +32,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'admin',
     tag: 'Context',
+    tier: 'prototype',
   },
 
   // ─── ACT 2: Custom Data Analytics ────────────────────────────────────────
@@ -43,6 +47,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/custom-data-analytics',
     role: 'admin',
     tag: 'Tool 1',
+    tier: 'mvp',
   },
   {
     id: 3,
@@ -55,6 +60,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/custom-data-analytics',
     role: 'admin',
     tag: 'Tool 1',
+    tier: 'mvp',
   },
   {
     id: 4,
@@ -67,6 +73,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/custom-data-analytics',
     role: 'admin',
     tag: 'Tool 1',
+    tier: 'mvp',
   },
   {
     id: 5,
@@ -79,6 +86,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/custom-data-analytics',
     role: 'admin',
     tag: 'Tool 1',
+    tier: 'mvp',
   },
   {
     id: 6,
@@ -91,6 +99,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/custom-dashboard',
     role: 'admin',
     tag: 'Tool 1',
+    tier: 'mvp',
   },
   {
     id: 7,
@@ -103,6 +112,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/custom-data-analytics',
     role: 'qc_technician',
     tag: 'Tool 1',
+    tier: 'mvp',
   },
 
   // ─── ACT 3: The Bridge ───────────────────────────────────────────────────
@@ -117,6 +127,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'admin',
     tag: 'Bridge',
+    tier: 'nice-to-have',
   },
 
   // ─── ACT 4: QA Operations Dashboard ─────────────────────────────────────
@@ -131,6 +142,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'admin',
     tag: 'Tool 2',
+    tier: 'mvp',
   },
   {
     id: 10,
@@ -143,6 +155,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'admin',
     tag: 'Tool 2',
+    tier: 'mvp',
   },
   {
     id: 11,
@@ -155,6 +168,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'pm',
     tag: 'Tool 2',
+    tier: 'mvp',
   },
   {
     id: 12,
@@ -167,6 +181,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'pm',
     tag: 'Tool 2',
+    tier: 'nice-to-have',
   },
   {
     id: 13,
@@ -179,6 +194,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'qc_technician',
     tag: 'Tool 2',
+    tier: 'mvp',
   },
   {
     id: 14,
@@ -191,6 +207,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'qc_technician_2',
     tag: 'Tool 2',
+    tier: 'nice-to-have',
   },
   {
     id: 15,
@@ -203,6 +220,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'qc_technician',
     tag: 'Tool 2',
+    tier: 'nice-to-have',
   },
   {
     id: 16,
@@ -215,6 +233,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'qc_technician',
     tag: 'Tool 2',
+    tier: 'nice-to-have',
   },
 
   // ─── ACT 5: Org Owner + Closing ──────────────────────────────────────────
@@ -229,6 +248,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'org_owner',
     tag: 'Closing',
+    tier: 'nice-to-have',
   },
   {
     id: 18,
@@ -241,6 +261,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/qa-dashboard',
     role: 'admin',
     tag: 'Closing',
+    tier: 'nice-to-have',
   },
   {
     id: 19,
@@ -253,6 +274,7 @@ export const DEMO_STEPS: DemoStep[] = [
     route: '/demo',
     role: 'admin',
     tag: 'Closing',
+    tier: 'prototype',
   },
 ]
 

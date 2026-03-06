@@ -28,17 +28,29 @@ A structured operations view that provides a clear paper trail for every survey,
 
 The Demo Guide is a step-by-step interactive walkthrough of the full prototype. It guides you through every feature in a structured sequence so you can understand what each part does, how to interact with it, and how the two tools connect to each other.
 
+### Feature Tiers
+
+Each step and feature in the prototype is labeled with one of three tiers:
+
+| Tier | Meaning |
+|---|---|
+| **MVP** | Core functionality — the minimum required for a production release |
+| **Nice to Have** | Meaningful improvements that add polish and depth but aren't blocking |
+| **Prototype** | Demo scaffolding and walkthrough framing specific to this prototype |
+
+These labels appear on every step card in the Demo Guide and in the floating overlay so you always know what you're looking at.
+
 ### What It Covers
 
 19 steps organized into five acts, covering the complete feature set in a logical order:
 
-| Act | Title | Steps | What It Covers |
-|---|---|---|---|
-| **1** | The Problem Today | 1 | Orientation — what FieldSync already does and where the new tools fit in |
-| **2** | Custom Data Analytics | 6 | Asking questions, viewing inline charts, saving to dashboard, role access enforcement |
-| **3** | The Bridge | 1 | Pinning an analytics metric directly into a QA Dashboard KPI row |
-| **4** | QA Operations Dashboard | 8 | Assignment workflow, technician views, priority locking, survey detail page, completing a survey |
-| **5** | The Full Picture | 3 | Org Owner view, KPI customization, overview of how it all connects |
+| Act | Title | Steps | Tier(s) | What It Covers |
+|---|---|---|---|---|
+| **1** | The Problem Today | 1 | Prototype | Orientation — what FieldSync already does and where the new tools fit in |
+| **2** | Custom Data Analytics | 6 | MVP | Asking questions, viewing inline charts, saving to dashboard, role access enforcement |
+| **3** | The Bridge | 1 | Nice to Have | Pinning an analytics metric directly into a QA Dashboard KPI row |
+| **4** | QA Operations Dashboard | 8 | MVP + Nice to Have | Assignment workflow, technician views, priority locking, survey detail page, completing a survey |
+| **5** | The Full Picture | 3 | Nice to Have + Prototype | Org Owner view, KPI customization, closing overview |
 
 ### How to Use It
 
@@ -59,6 +71,55 @@ Use **Prev / Next** to move between steps. The progress bar and step dots show w
 ### Jumping to a Specific Section
 
 Use the act filter tabs on the Demo Guide page to show only the steps from a particular act. This is useful for revisiting a specific feature without going through the full walkthrough from the beginning — for example, jumping straight to Act 4 to walk through the survey assignment and completion flow.
+
+---
+
+## Feature Tiers
+
+A full breakdown of every feature in the prototype and where it falls on the MVP → Nice to Have → Prototype scale.
+
+### MVP — Core Features
+
+These are the minimum required features for a production release. Nothing else matters if these don't work.
+
+| Feature | Tool | Notes |
+|---|---|---|
+| Natural-language data querying via Claude + MCP | Custom Data Analytics | The core value prop — live queries against the real database |
+| Role-based access enforcement (two-layer) | Custom Data Analytics | Frontend pre-check + server-side Claude enforcement |
+| Inline chart / metric card rendering | Custom Data Analytics | Results auto-format to bar, line, area, pie, or metric |
+| Save chart to personal dashboard | Custom Data Analytics | Per-role isolation — each user's saved widgets are private |
+| My Custom Dashboard (drag, resize, save layouts) | Custom Dashboard | Personal analytics workspace that persists between sessions |
+| QA Dashboard — admin full view | QA Dashboard | All orgs, all tabs (Surveys, Scans, Site Visits, Sites), completion rate |
+| Organization filtering | QA Dashboard | Scope any view to a single org; UI adapts contextually |
+| PM survey assignment workflow | QA Dashboard | Assign Work mode — Needs Assignment + Assigned Surveys tables |
+| Technician personal work queue | QA Dashboard | Priority-ordered card view scoped to the individual technician |
+
+### Nice to Have — Meaningful Improvements
+
+These features add real value and are worth building after the MVP is stable.
+
+| Feature | Tool | Notes |
+|---|---|---|
+| Analytics → QA KPI bridge | Both tools | Pin a saved analytics metric directly into a QA Dashboard KPI row |
+| PM "My Work" toggle | QA Dashboard | Separate view for Susan's personally assigned surveys |
+| Priority lock system | QA Dashboard | High-priority surveys block lower-priority ones by default |
+| Unblock with confirmation modal | QA Dashboard | Documented override for out-of-sequence field work |
+| Survey detail page | QA Dashboard | Full inspection form — accordion sections, field checklists, progress tracking |
+| Mark as Complete with cross-role propagation | QA Dashboard | Completion is immediately visible to PM and Admin |
+| Org Owner health view | QA Dashboard | Full-width per-org summary cards for high-level stakeholders |
+| Customizable KPI cards | QA Dashboard | Per-role, per-tab metric customization with localStorage persistence |
+
+### Prototype — Demo Scaffolding
+
+These are specific to the prototype and wouldn't ship as-is in production.
+
+| Feature | Notes |
+|---|---|
+| Demo Guide walkthrough (`/demo`) | Step-by-step interactive guide with floating overlay — useful for onboarding but not a production feature |
+| Context-setting step (Act 1) | Orientation framing for the walkthrough |
+| Value proposition closing step (Act 5, Step 19) | Summary framing for the walkthrough |
+| Role switcher in top nav | Prototype convenience — production would use real authentication |
+| Simulated/mock survey data | All survey, scan, site, and site visit data is hardcoded for demo purposes |
 
 ---
 

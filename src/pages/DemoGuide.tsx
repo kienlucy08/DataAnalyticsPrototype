@@ -13,7 +13,7 @@ import {
   SkipForward,
 } from 'lucide-react'
 import { useDemo, DEMO_STEPS } from '../context/DemoContext'
-import type { DemoStep } from '../context/DemoContext'
+import type { DemoStep, DemoTier } from '../context/DemoContext'
 
 // ─── Act metadata ────────────────────────────────────────────────────────────
 
@@ -179,6 +179,7 @@ const StepCard: React.FC<StepCardProps> = ({ step, globalIdx, actMeta, onStart }
                 {step.tag}
               </span>
             )}
+            <TierBadge tier={step.tier} />
           </div>
           <p className="text-text-muted text-xs">{step.subtitle}</p>
         </div>
@@ -249,6 +250,23 @@ const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
   const meta = ROLE_DISPLAY[role] ?? { label: role, color: 'text-text-muted bg-surface border-border' }
   return (
     <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${meta.color}`}>
+      {meta.label}
+    </span>
+  )
+}
+
+// ─── Tier badge ──────────────────────────────────────────────────────────────
+
+const TIER_META: Record<DemoTier, { label: string; color: string }> = {
+  'mvp':          { label: 'MVP',           color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30' },
+  'nice-to-have': { label: 'Nice to Have',  color: 'text-accent bg-accent/10 border-accent/30' },
+  'prototype':    { label: 'Prototype',     color: 'text-amber-400 bg-amber-400/10 border-amber-400/30' },
+}
+
+const TierBadge: React.FC<{ tier: DemoTier; size?: 'sm' | 'xs' }> = ({ tier, size = 'xs' }) => {
+  const meta = TIER_META[tier]
+  return (
+    <span className={`font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border shrink-0 ${meta.color} ${size === 'sm' ? 'text-[10px]' : 'text-[9px]'}`}>
       {meta.label}
     </span>
   )
@@ -327,6 +345,7 @@ export const DemoStepOverlay: React.FC = () => {
                 {step.tag}
               </span>
             )}
+            <TierBadge tier={step.tier} />
           </div>
           <p className="text-text-muted text-xs">{step.subtitle}</p>
         </div>
