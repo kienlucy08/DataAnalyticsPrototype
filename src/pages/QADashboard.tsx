@@ -578,7 +578,7 @@ function OrgSwitcher({ orgs, value, onChange, allowAll = false }: OrgSwitcherPro
 interface RoleViewProps {
   orgFilter: string
   surveys: Survey[]
-  onAssign: (surveyId: string, assignee: string) => void
+  onAssign: (surveyId: string, assignee: string, dueDate: string | null) => void
   onSelectSurvey: (id: string) => void
 }
 
@@ -604,6 +604,7 @@ interface DashboardTabsProps {
   tabKpis?: Partial<Record<TabId, React.ReactNode>>
   showOrgColumn?: boolean
   onSelectSurvey?: (id: string) => void
+  onAssign?: (survey: Survey) => void
 }
 
 function Checkbox({ checked, onClick }: { checked: boolean; onClick: () => void }) {
@@ -629,7 +630,73 @@ function ActionCell() {
   )
 }
 
-function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent, tabKpis, showOrgColumn = false, onSelectSurvey }: DashboardTabsProps) {
+function SurveyActionMenu({ survey, onAssign }: { survey: Survey; onAssign?: (s: Survey) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    const handle = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [open])
+
+  const items = [
+    { icon: <ChevronRight size={13} />, label: 'View Survey',         action: () => {} },
+    { icon: <ChevronRight size={13} />, label: 'Download JSON',       action: () => {} },
+    { icon: <ChevronRight size={13} />, label: 'Create Image Export', action: () => {} },
+  ]
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
+      >
+        <MoreHorizontal size={13} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-48 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
+          {items.map(item => (
+            <button
+              key={item.label}
+              onClick={() => { item.action(); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:bg-surface hover:text-text-primary transition-colors flex items-center gap-2"
+            >
+              <span className="text-text-muted">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+
+          {onAssign && (
+            <>
+              <div className="border-t border-border my-1" />
+              <button
+                onClick={() => { onAssign(survey); setOpen(false) }}
+                className="w-full text-left px-3 py-2 text-xs text-accent hover:bg-accent/10 transition-colors flex items-center gap-2"
+              >
+                <UserCheck size={13} />
+                {survey.assignee ? 'Reassign Survey' : 'Assign Survey'}
+              </button>
+            </>
+          )}
+
+          <div className="border-t border-border my-1" />
+          <button
+            onClick={() => setOpen(false)}
+            className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition-colors flex items-center gap-2"
+          >
+            <XCircle size={13} />
+            Delete Survey
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent, tabKpis, showOrgColumn = false, onSelectSurvey, onAssign }: DashboardTabsProps) {
   const [activeTab, setActiveTab]               = useState<TabId>('surveys')
   const [filterText, setFilterText]             = useState('')
   const [scopeFilter, setScopeFilter]           = useState<SurveyScope | 'all'>('all')
@@ -840,7 +907,7 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
                 <th className={thClass}>
                   <span className="flex items-center gap-1">Created <ChevronDown size={10} /></span>
                 </th>
-                <th className="px-3 py-2.5 w-16" />
+                <th className="px-3 py-2.5 w-10" />
               </tr>
             </thead>
             <tbody>
@@ -859,7 +926,7 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
                   <td className={tdClass}><StatusBadge status={s.status} /></td>
                   <td className={`${tdClass} w-28`}>{s.progress !== undefined ? <ProgressBar value={s.progress} /> : '—'}</td>
                   <td className={`${tdClass} text-text-muted whitespace-nowrap`}>{s.createdDate}</td>
-                  <td className={tdClass}><ActionCell /></td>
+                  <td className={tdClass}><SurveyActionMenu survey={s} onAssign={onAssign} /></td>
                 </tr>
               ))}
               {filteredSurveys.length === 0 && (
@@ -1031,12 +1098,32 @@ const ASSIGNABLE_USERS = ['Matt Edrich', 'John Smith', 'Susan Smith']
 interface AssignModalProps {
   survey: Survey
   onClose: () => void
-  onConfirm: (surveyId: string, assignee: string) => void
+  onConfirm: (surveyId: string, assignee: string, dueDate: string | null) => void
 }
 
 function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
-  const [selected, setSelected] = useState(survey.assignee ?? '')
+  const [step, setStep]           = useState<'assignee' | 'due_date'>('assignee')
+  const [selected, setSelected]   = useState(survey.assignee ?? '')
+  const [dueDate, setDueDate]     = useState<string | null>(null)
+  const [customDate, setCustomDate] = useState('')
   const isReassign = Boolean(survey.assignee)
+
+  const today  = new Date()
+  const plus7  = new Date(today); plus7.setDate(today.getDate() + 7)
+  const plus14 = new Date(today); plus14.setDate(today.getDate() + 14)
+  const fmtDisplay = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const fmtInput   = (d: Date) => d.toISOString().split('T')[0]
+
+  const handleFinalAssign = (skipDueDate = false) => {
+    const finalDate = skipDueDate ? null : (dueDate ?? (customDate ? new Date(customDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null))
+    onConfirm(survey.id, selected, finalDate)
+    onClose()
+  }
+
+  const QUICK_DATES = [
+    { label: '+7 days',  sub: fmtDisplay(plus7),  value: fmtDisplay(plus7) },
+    { label: '+14 days', sub: fmtDisplay(plus14), value: fmtDisplay(plus14) },
+  ]
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -1054,9 +1141,18 @@ function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
               {isReassign ? 'Reassign Survey' : 'Assign Survey'}
             </h2>
           </div>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors rounded-md p-0.5">
-            <X size={15} />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Stepper dots */}
+            <div className="flex items-center gap-1.5">
+              <div className={['w-2 h-2 rounded-full transition-colors', step === 'assignee' ? 'bg-accent' : 'bg-emerald-400'].join(' ')} />
+              <div className="w-4 h-px bg-border" />
+              <div className={['w-2 h-2 rounded-full transition-colors', step === 'due_date' ? 'bg-accent' : 'bg-border'].join(' ')} />
+            </div>
+            <span className="text-[10px] text-text-muted">{step === 'assignee' ? '1 of 2' : '2 of 2'}</span>
+            <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors rounded-md p-0.5">
+              <X size={15} />
+            </button>
+          </div>
         </div>
 
         {/* Survey info card */}
@@ -1066,80 +1162,150 @@ function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
             <span className="font-mono">{survey.siteId}</span>
             <span>·</span>
             <span>{survey.siteName}</span>
-            {survey.dueDate && (
-              <>
-                <span>·</span>
-                <span className="text-amber-400">Due {survey.dueDate}</span>
-              </>
-            )}
           </div>
-          <div className="flex items-center gap-2 pt-0.5">
+          <div className="flex items-center gap-2 pt-0.5 flex-wrap">
             <PriorityBadge priority={getEffectivePriority(survey)} />
             <StatusBadge status={survey.status} />
+            {step === 'due_date' && selected && (
+              <span className="text-[10px] text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <UserCheck size={9} /> {selected}
+              </span>
+            )}
           </div>
-          {isReassign && (
+          {isReassign && step === 'assignee' && (
             <div className="text-xs text-text-muted pt-0.5">
               Currently assigned to <span className="text-text-secondary font-medium">{survey.assignee}</span>
             </div>
           )}
         </div>
 
-        {/* Assignee picker */}
-        <div className="px-5 py-4">
-          <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider mb-3">
-            {isReassign ? 'Reassign to' : 'Assign to'}
+        {/* Step 1 — Assignee picker */}
+        {step === 'assignee' && (
+          <div className="px-5 py-4">
+            <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider mb-3">
+              {isReassign ? 'Reassign to' : 'Assign to'}
+            </div>
+            <div className="space-y-2">
+              {ASSIGNABLE_USERS.map(name => {
+                const initials  = name.split(' ').map(n => n[0]).join('')
+                const isSelf    = name === 'Susan Smith'
+                const isCurrent = name === survey.assignee
+                return (
+                  <button
+                    key={name}
+                    onClick={() => setSelected(name)}
+                    disabled={isCurrent}
+                    className={[
+                      'w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors flex items-center gap-3',
+                      isCurrent
+                        ? 'border-border bg-surface/30 opacity-40 cursor-not-allowed'
+                        : selected === name
+                        ? 'border-accent bg-accent/10 text-text-primary'
+                        : 'border-border bg-surface hover:border-accent/40 text-text-secondary',
+                    ].join(' ')}
+                  >
+                    <div className={[
+                      'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0',
+                      selected === name && !isCurrent ? 'bg-accent text-white' : 'bg-surface border border-border text-text-muted',
+                    ].join(' ')}>
+                      {initials}
+                    </div>
+                    <span className="flex-1">{name}</span>
+                    {isSelf && <span className="text-[9px] text-text-muted bg-surface border border-border px-1.5 py-0.5 rounded">You</span>}
+                    {isCurrent && <span className="text-[9px] text-text-muted">Current</span>}
+                    {selected === name && !isCurrent && <CheckCircle2 size={14} className="text-accent shrink-0" />}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          <div className="space-y-2">
-            {ASSIGNABLE_USERS.map(name => {
-              const initials = name.split(' ').map(n => n[0]).join('')
-              const isSelf   = name === 'Susan Smith'
-              const isCurrent = name === survey.assignee
-              return (
+        )}
+
+        {/* Step 2 — Due date */}
+        {step === 'due_date' && (
+          <div className="px-5 py-4">
+            <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider mb-3">Set Due Date</div>
+            <div className="space-y-2">
+              {QUICK_DATES.map(opt => (
                 <button
-                  key={name}
-                  onClick={() => setSelected(name)}
-                  disabled={isCurrent}
+                  key={opt.value}
+                  onClick={() => { setDueDate(opt.value); setCustomDate('') }}
                   className={[
-                    'w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors flex items-center gap-3',
-                    isCurrent
-                      ? 'border-border bg-surface/30 opacity-40 cursor-not-allowed'
-                      : selected === name
+                    'w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors flex items-center justify-between',
+                    dueDate === opt.value
                       ? 'border-accent bg-accent/10 text-text-primary'
                       : 'border-border bg-surface hover:border-accent/40 text-text-secondary',
                   ].join(' ')}
                 >
-                  <div className={[
-                    'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0',
-                    selected === name && !isCurrent ? 'bg-accent text-white' : 'bg-surface border border-border text-text-muted',
-                  ].join(' ')}>
-                    {initials}
+                  <span className="font-medium">{opt.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-muted text-xs">{opt.sub}</span>
+                    {dueDate === opt.value && <CheckCircle2 size={13} className="text-accent" />}
                   </div>
-                  <span className="flex-1">{name}</span>
-                  {isSelf && <span className="text-[9px] text-text-muted bg-surface border border-border px-1.5 py-0.5 rounded">You</span>}
-                  {isCurrent && <span className="text-[9px] text-text-muted">Current</span>}
-                  {selected === name && !isCurrent && <CheckCircle2 size={14} className="text-accent shrink-0" />}
                 </button>
-              )
-            })}
+              ))}
+              {/* Custom date input */}
+              <div className={[
+                'rounded-xl border px-3 py-2.5 transition-colors',
+                customDate ? 'border-accent' : 'border-border',
+              ].join(' ')}>
+                <div className="text-[10px] text-text-muted mb-1.5">Custom date</div>
+                <input
+                  type="date"
+                  value={customDate}
+                  min={fmtInput(today)}
+                  onChange={e => { setCustomDate(e.target.value); setDueDate(null) }}
+                  className="w-full bg-transparent text-text-primary text-xs outline-none"
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-border flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-xs text-text-secondary hover:text-text-primary border border-border rounded-lg hover:border-accent/40 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => { if (selected && selected !== survey.assignee) { onConfirm(survey.id, selected); onClose() } }}
-            disabled={!selected || selected === survey.assignee}
-            className="px-4 py-2 text-xs font-semibold bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-          >
-            <UserCheck size={13} />
-            {isReassign ? 'Reassign' : 'Assign'}
-          </button>
+        <div className="px-5 py-4 border-t border-border flex items-center justify-between gap-3">
+          {step === 'due_date' ? (
+            <>
+              <button
+                onClick={() => setStep('assignee')}
+                className="px-4 py-2 text-xs text-text-secondary hover:text-text-primary border border-border rounded-lg hover:border-accent/40 transition-colors"
+              >
+                ← Back
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleFinalAssign(true)}
+                  className="px-4 py-2 text-xs text-text-secondary hover:text-text-primary border border-border rounded-lg hover:border-accent/40 transition-colors"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={() => handleFinalAssign(false)}
+                  disabled={!dueDate && !customDate}
+                  className="px-4 py-2 text-xs font-semibold bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  <UserCheck size={13} />
+                  {isReassign ? 'Reassign' : 'Assign'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-xs text-text-secondary hover:text-text-primary border border-border rounded-lg hover:border-accent/40 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setStep('due_date')}
+                disabled={!selected || selected === survey.assignee}
+                className="px-4 py-2 text-xs font-semibold bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                Next →
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1580,7 +1746,7 @@ function SurveyDetailPage({ survey, onClose, onMarkComplete }: {
 
 // ─── PM Surveys Content (split: Needs Assignment + Assigned) ───────────────
 
-function PMSurveysContent({ surveys, onAssign, onSelectSurvey }: { surveys: Survey[]; onAssign: (id: string, assignee: string) => void; onSelectSurvey?: (id: string) => void }) {
+function PMSurveysContent({ surveys, onAssign, onSelectSurvey }: { surveys: Survey[]; onAssign: (id: string, assignee: string, dueDate: string | null) => void; onSelectSurvey?: (id: string) => void }) {
   const [modalSurvey, setModalSurvey] = useState<Survey | null>(null)
   const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
   const unassigned = [...surveys.filter(s => s.status === 'unassigned')]
@@ -1589,8 +1755,8 @@ function PMSurveysContent({ surveys, onAssign, onSelectSurvey }: { surveys: Surv
 
   const thClass = 'px-3 py-2.5 text-left text-text-primary font-semibold text-xs'
 
-  const handleConfirm = (surveyId: string, assignee: string) => {
-    onAssign(surveyId, assignee)
+  const handleConfirm = (surveyId: string, assignee: string, dueDate: string | null) => {
+    onAssign(surveyId, assignee, dueDate)
     setModalSurvey(null)
   }
 
@@ -1870,8 +2036,10 @@ function TechSurveysContent({ surveys, showPriorityLock, onSelectSurvey }: {
 
 // ─── Admin View ─────────────────────────────────────────────────────────────
 
-function AdminView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSelectSurvey }: RoleViewProps) {
+function AdminView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }: RoleViewProps) {
   const { config, addMetric, removeMetric, resetContext } = useKpiConfig('admin')
+  const [modalSurvey, setModalSurvey] = useState<Survey | null>(null)
+
   const applyOrg = <T extends { organization: string }>(arr: T[]) =>
     orgFilter === 'all' ? arr : arr.filter(s => s.organization === orgFilter)
 
@@ -1901,6 +2069,14 @@ function AdminView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSele
 
   return (
     <div className="space-y-5">
+      {modalSurvey && (
+        <AssignModal
+          survey={modalSurvey}
+          onClose={() => setModalSurvey(null)}
+          onConfirm={(id, assignee, dueDate) => { onAssign(id, assignee, dueDate); setModalSurvey(null) }}
+        />
+      )}
+
       <div className="rounded-xl border border-border bg-card px-5 py-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-text-muted text-xs">Overall Completion Rate</span>
@@ -1918,6 +2094,7 @@ function AdminView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSele
         tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
         showOrgColumn={orgFilter === 'all'}
         onSelectSurvey={onSelectSurvey}
+        onAssign={setModalSurvey}
       />
     </div>
   )
@@ -1925,8 +2102,10 @@ function AdminView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSele
 
 // ─── Org Owner View ─────────────────────────────────────────────────────────
 
-function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSelectSurvey }: RoleViewProps) {
+function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }: RoleViewProps) {
   const { config, addMetric, removeMetric, resetContext } = useKpiConfig('org_owner', { surveys: [], scans: [], site_visits: [], sites: [] })
+  const [modalSurvey, setModalSurvey] = useState<Survey | null>(null)
+
   const applyOrg = <T extends { organization: string }>(arr: T[]) =>
     orgFilter === 'all' ? arr : arr.filter(s => s.organization === orgFilter)
 
@@ -1962,6 +2141,14 @@ function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onS
 
   return (
     <div className="space-y-5">
+      {modalSurvey && (
+        <AssignModal
+          survey={modalSurvey}
+          onClose={() => setModalSurvey(null)}
+          onConfirm={(id, assignee, dueDate) => { onAssign(id, assignee, dueDate); setModalSurvey(null) }}
+        />
+      )}
+
       <div className="grid grid-cols-1 gap-4">
         {orgStats.map(org => (
           <div key={org.org} className="rounded-xl border border-border bg-card px-4 py-4">
@@ -1994,6 +2181,7 @@ function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onS
         tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
         showOrgColumn={orgFilter === 'all'}
         onSelectSurvey={onSelectSurvey}
+        onAssign={setModalSurvey}
       />
     </div>
   )
@@ -2200,19 +2388,19 @@ const QADashboard: React.FC = () => {
 
   const availableOrgs = ROLE_ORGS[role] ?? []
 
-  const assignSurvey = (surveyId: string, assignee: string) => {
+  const assignSurvey = (surveyId: string, assignee: string, dueDate: string | null) => {
     setSurveys(prev => {
       const survey = prev.find(s => s.id === surveyId)
       if (!survey) return prev
-      const message = survey.assignee
-        ? `"${survey.name}" reassigned to ${assignee}`
-        : `"${survey.name}" assigned to ${assignee}`
+      const action  = survey.assignee ? 'reassigned to' : 'assigned to'
+      const duePart = dueDate ? ` · due ${dueDate}` : ''
+      const message = `"${survey.name}" ${action} ${assignee}${duePart}`
       const id = Date.now().toString()
       setToasts(t => [...t, { id, message }])
       setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
       return prev.map(s =>
         s.id === surveyId
-          ? { ...s, assignee, status: s.status === 'unassigned' ? 'pending' : s.status }
+          ? { ...s, assignee, status: s.status === 'unassigned' ? 'pending' : s.status, ...(dueDate !== null ? { dueDate } : {}) }
           : s
       )
     })
