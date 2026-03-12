@@ -17,26 +17,173 @@ The DB columns added by this migration are not redundant with ClickUp. They are 
 
 ---
 
-### How ClickUp Tasks Are Created (Survey Submission Flow)
+### ClickUp Task Name Convention
 
-Understanding the normal task-creation path is essential for the sync architecture:
+ClickUp tasks for surveys follow this naming convention:
 
-**Normal path — Power Automate:**
-1. A survey is submitted in FieldSync
-2. Power Automate detects the submission event and automatically creates a corresponding task in the designated ClickUp list
-3. The task lands in ClickUp at roughly the same time the survey row is created in the DB
-4. `clickup_task_id` must be populated by storing the ClickUp task ID returned from this Power Automate flow back into the DB survey row
+```
+{CustomerName} #{SiteID} ({SiteName}) {SurveyType} Submitted
+```
 
-**Exception — Guy Facilities surveys:**
-- Power Automate does not have access to Guy Facilities survey submissions
-- ClickUp tasks for these surveys are created **manually** by team members
-- The timing of task creation relative to the DB row is variable — the task may exist before the DB row is linked to it, or the DB row may exist for a period with `clickup_task_id IS NULL`
+**Example:** `TowerCo #Ms2022009 (Silver run parker) Compound Submitted`
 
-**Both paths result in:** a ClickUp task and a DB survey row that need to be linked via `clickup_task_id`. The mechanism differs, the outcome is the same.
+| Segment | Parsed value | Mapped to |
+|---|---|---|
+| `TowerCo` | Customer / organization name | `survey.organization` |
+| `#Ms2022009` | Site ID (strip the `#`) | `survey.site_id` |
+| `(Silver run parker)` | Site name (content inside parentheses) | `survey.site_name` |
+| `Compound Submitted` | Survey type keyword + "Submitted" suffix | `survey.name` (display) + `survey.scope` |
 
-**Implication for `clickup_task_id` population:**
-- For Power Automate surveys: the Power Automate flow should write the ClickUp task ID back to the DB survey row immediately on task creation. This gives full sync coverage from day one.
-- For Guy Facilities surveys (or any manual case): `clickup_task_id` starts as NULL. The first time a PM takes an action on the survey in the web app (assign, set due date), the server checks for NULL and creates a new ClickUp task in the same list before proceeding. The returned task ID is stored and all future actions sync normally.
+**Survey type keyword mapping:**
+
+| ClickUp keyword | Display name | `scope` value |
+|---|---|---|
+| `Compound` | Compound Inspection | `inspection` |
+| `Structure Climb` | Structure Climb Inspection | `inspection` |
+| `P&T` / `Plumb` | Plumb & Twist Inspection | `inspection` |
+| `Guy Facilities` | Guy Facilities Inspection | `facilities` |
+| `COP` | COP Inspection | `cop` |
+| `JSA` | Job Safety Analysis | `jsa` |
+
+This parsing is applied in the web app when rendering tasks pulled from ClickUp. For the DB, these parsed values (`site_id`, `site_name`, `organization`, `name`) should be populated either by the Power Automate flow at creation time (preferred) or by a one-time backfill pass using this parsing logic against the `clickup_task_id` linked task names.
+
+---
+
+### ClickUp Priority Mapping
+
+ClickUp tasks have four priority levels. The web app maps them as follows:
+
+| ClickUp priority | DB / display priority | Notes |
+|---|---|---|
+| `urgent` | `high` | Treated as highest urgency |
+| `high` | `high` | — |
+| `normal` | `medium` | Default priority |
+| `low` | `low` | — |
+| *(no priority set / null)* | `medium` | Defaults to normal |
+
+---
+
+### ClickUp Status Resolution
+
+ClickUp status names are list-specific — the actual string for "done" varies per workspace and list (e.g., `"complete"`, `"Done"`, `"Closed"`). The web app resolves this at runtime by:
+
+1. Calling `GET /list/{listId}` on mount — the response includes a `statuses[]` array with each status's `status`, `color`, and `type` fields
+2. Finding the entry with `type === "closed"` — this is the workspace's actual done status, regardless of its display name
+3. Using that resolved status name for all write-backs when marking a survey complete
+
+**Implication for DB:** The `clickup_status_map` table (see Open Question 12) should store the `type` field alongside the status name so inbound webhooks can resolve `type: closed` → `qaStatus: completed` without hardcoding status strings.
+
+---
+
+### Private Folder Access & Member Scoping
+
+Surveys and site visits live in **private ClickUp folders**. Not all workspace members can see private folders — only users explicitly granted access can view and be assigned to tasks in those lists.
+
+**Implication:** When populating the assignee picker in the web app, the list of available assignees must be scoped to the specific ClickUp list, not the full workspace. The correct endpoint is:
+
+```
+GET https://api.clickup.com/api/v2/list/{listId}/member
+```
+
+This returns only users who have access to that private list. Using `GET /team` (all workspace members) would expose people who cannot see the tasks, making them invalid assignees.
+
+**Server proxy endpoint:** `GET /api/clickup/lists/:listId/members` — calls `/list/{listId}/member`, falls back to mock data when no API key is set.
+
+---
+
+### Survey Submission Flow & Dual-Pipeline Architecture
+
+Surveys arrive in FieldSync via **two independent pipelines** that fire on the same submission event but write to different systems. Understanding this is critical for the sync architecture:
+
+```
+Survey123 submission
+       │
+       ├──► Esri webhook ──► FieldSync API ──► survey row created in DB
+       │                                        (site_id, survey type, submitted_at, etc.)
+       │
+       └──► Power Automate ──► ClickUp task created in list
+                                (task name: "Customer #SiteID (SiteName) Type Submitted")
+```
+
+These two writes are **asynchronous and independent**. The DB row and the ClickUp task are created within seconds of each other but neither knows about the other at creation time. **Linking them is a reconciliation step**, not an atomic operation.
+
+---
+
+### Survey–Task Reconciliation (`clickup_task_id` population)
+
+Because the DB row and ClickUp task are created independently, a reconciliation process must match them and write the `clickup_task_id` onto the DB survey row. This is the answer to **Open Question 9**.
+
+#### Matching Criteria
+
+A DB survey row and a ClickUp task are considered the same survey if **all three** of the following match:
+
+| Signal | DB field | ClickUp source | Match method |
+|---|---|---|---|
+| Site ID | `survey.site_id` | Parsed from task name `#SiteID` segment | Exact string match (case-insensitive) |
+| Survey type | `survey.scope` or `survey.name` | Parsed from task name keyword (Compound, Structure Climb, P&T, etc.) | Keyword → scope mapping |
+| Submission timestamp | `survey.created_at` (from Esri webhook) | `task.date_created` (Unix ms from ClickUp) | Within a configurable tolerance window (recommended: ±2 hours) |
+
+A match on site ID + survey type alone is **not sufficient** — the same site may have multiple surveys of the same type submitted over time. The timestamp tolerance closes this ambiguity.
+
+#### Reconciliation Implementation
+
+```sql
+-- View: unlinked surveys (no clickup_task_id yet)
+SELECT id, site_id, scope, created_at
+FROM   survey
+WHERE  clickup_task_id IS NULL
+ORDER BY created_at DESC;
+```
+
+Application-layer reconciliation job (runs on a schedule or triggered by PM action):
+
+```
+1. Fetch all unlinked surveys (clickup_task_id IS NULL)
+2. Call GET /list/{surveysListId}/task?include_closed=true&order_by=date_created
+3. For each ClickUp task:
+   a. Parse site_id from task name (#SiteID segment)
+   b. Parse survey_type keyword → scope value
+   c. Convert task.date_created (Unix ms) to timestamp
+4. For each unlinked survey row:
+   a. Find ClickUp tasks where:
+      - parsed site_id matches survey.site_id (case-insensitive)
+      - parsed scope matches survey.scope
+      - |task.date_created - survey.created_at| < 2 hours
+   b. If exactly 1 match: UPDATE survey SET clickup_task_id = task.id WHERE id = survey.id
+   c. If 0 matches: log as "no ClickUp task found" — may be a Guy Facilities survey
+   d. If 2+ matches: log as "ambiguous match" — requires manual review
+5. Report: matched count, unmatched count, ambiguous count
+```
+
+#### Ongoing reconciliation (for new surveys)
+
+For surveys submitted after the reconciliation infrastructure is live, the same job runs on a short schedule (e.g., every 5 minutes) or is triggered by the Esri webhook handler to attempt a match immediately after the DB row is created. PA typically creates the ClickUp task within 30–60 seconds of submission, so a short retry window handles the race condition.
+
+```
+Esri webhook fires → DB row created → schedule reconciliation attempt in 90 seconds
+                                     → if match found: link and stop
+                                     → if no match after 5 attempts (7.5 min): flag for manual review
+```
+
+#### Guy Facilities exception
+
+Power Automate does not have access to Guy Facilities survey submissions. ClickUp tasks for these surveys are created **manually** by team members, meaning:
+- The ClickUp task name may not follow the standard naming convention
+- The `date_created` timestamp on the task may be hours or days after `survey.created_at`
+- Automated reconciliation will likely fail → these will appear in the "no match" report
+
+**Handling:** A dedicated Guy Facilities match UI in the admin/PM view that shows unlinked Guy Facilities surveys alongside recent unlinked ClickUp tasks, allowing a PM to manually confirm the link. Once confirmed: `UPDATE survey SET clickup_task_id = ? WHERE id = ?`.
+
+---
+
+### `clickup_task_id` Population Strategy Summary
+
+| Survey source | Path | When linked |
+|---|---|---|
+| Standard survey (Survey123 + PA) | Automated reconciliation job | ~90 seconds after submission |
+| Guy Facilities survey | Manual match via PM UI | When a PM confirms the link |
+| Historical surveys (pre-migration) | One-time reconciliation run | During migration execution |
+| PA miss (task not created) | Web app auto-creates task on first PM action | On first assign/due-date action |
 
 ---
 
@@ -177,12 +324,82 @@ CREATE INDEX idx_site_visit_clickup_task ON site_visit(clickup_task_id);
 ```
 
 **Normal population (going forward):**
-- Power Automate surveys: the Power Automate flow writes the ClickUp task ID back to `survey.clickup_task_id` at the time it creates the task. This should be implemented in the Power Automate workflow itself.
-- Guy Facilities / manual surveys: `clickup_task_id` starts NULL. The server auto-creates a ClickUp task on the first PM action and stores the returned ID immediately.
+- **Survey123 surveys (standard pipeline):** Survey123 webhook fires → survey row lands in FieldSync DB. Independently, Power Automate creates a ClickUp task from the same submission. A background reconciliation job matches the two using the three-signal algorithm (site ID + survey type keyword + ±2 hr timestamp) and writes the matched ClickUp task ID into `survey.clickup_task_id`. For most survey types this match is fully automated.
+- **Guy Facilities surveys:** Power Automate does not process these. `clickup_task_id` starts NULL. A PM manually creates the ClickUp task, or the server auto-creates one on the first PM action and stores the returned ID immediately. Guy Facilities records without a counterpart ClickUp task are flagged for manual review in the reconciliation report.
 
-**Population strategy for existing rows:** Requires a one-time matching pass — find the ClickUp task whose name or custom field matches the survey ID or name, and write the task ID to the DB row. This cannot be automated without either a naming convention or a custom field in ClickUp. See Open Question 9.
+**Population strategy for existing rows (historical backfill):** A one-time reconciliation run iterates all surveys with `clickup_task_id IS NULL`, calls the ClickUp list API, and attempts the three-signal match. Successfully matched rows are updated immediately. Unmatched rows (primarily Guy Facilities and edge cases) are output to a CSV for manual review and bulk update.
 
-**NULL meaning:** `clickup_task_id IS NULL` means this record has no linked ClickUp task yet — expected for Guy Facilities surveys before first PM action. The web app functions fully without it; ClickUp sync is activated automatically on the first action that triggers task creation.
+**NULL meaning:** `clickup_task_id IS NULL` means this record has not yet been linked to a ClickUp task — expected for Guy Facilities surveys awaiting manual matching, or new Survey123 submissions pending the next reconciliation pass. The web app functions fully without it; ClickUp sync activates automatically once the ID is populated.
+
+---
+
+### User Identity & ClickUp Account Mapping
+
+ClickUp identifies users by an integer `id` (e.g., `1001`) and a `username` string. FieldSync has its own `account` table with user records. Without an explicit link between these two systems, the web app cannot:
+
+- Show the correct FieldSync display name for a person assigned in ClickUp
+- Send the correct ClickUp user ID when assigning from the web app
+- Attribute `assigned_by` to the right FieldSync account when a ClickUp webhook fires
+
+#### Proposed Table: `clickup_user_mapping`
+
+```sql
+CREATE TABLE clickup_user_mapping (
+  id                  SERIAL PRIMARY KEY,
+  account_id          INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+  clickup_user_id     INTEGER NOT NULL,           -- ClickUp's numeric user ID (from API/webhook)
+  clickup_username    VARCHAR(255) NOT NULL,       -- ClickUp display name (e.g. "Matt Edrich")
+  clickup_email       VARCHAR(255),               -- ClickUp email — use for matching on initial setup
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE (account_id),                            -- one ClickUp identity per FieldSync account
+  UNIQUE (clickup_user_id)                        -- one FieldSync account per ClickUp user
+);
+
+CREATE INDEX idx_cum_account_id       ON clickup_user_mapping(account_id);
+CREATE INDEX idx_cum_clickup_user_id  ON clickup_user_mapping(clickup_user_id);
+CREATE INDEX idx_cum_clickup_email    ON clickup_user_mapping(clickup_email);
+```
+
+#### How the mapping is established
+
+1. **Email match (recommended auto-link):** On first ClickUp-related action, the server calls `GET /list/{listId}/member` and attempts to match each member's `email` against `account.email`. Matches are auto-inserted into `clickup_user_mapping`.
+2. **Manual link:** An admin can manually associate a FieldSync account with a ClickUp user ID via a settings page — handles cases where emails differ between systems.
+3. **Unmatched ClickUp users:** If a ClickUp user has no matching FieldSync account (e.g., a ClickUp-only contractor), their assignment is stored using their `clickup_username` as the display name with `account_id = NULL`. This allows the data to be recorded without blocking the sync.
+
+#### Survey & Site Visit additions
+
+Store the ClickUp user ID alongside the display name to enable correct API write-backs without repeated lookups:
+
+```sql
+ALTER TABLE survey
+  ADD COLUMN assignee_clickup_id      INTEGER,    -- ClickUp user ID of current assignee
+  ADD COLUMN assigned_by_clickup_id   INTEGER;    -- ClickUp user ID of who performed the assignment
+
+ALTER TABLE site_visit
+  ADD COLUMN assignee_clickup_id      INTEGER;    -- ClickUp user ID of current assignee
+```
+
+> These columns are **not foreign keys** into `clickup_user_mapping` — a ClickUp user may be an assignee before their mapping record is created, or may never have a FieldSync account. They are stored as plain integers for API call construction and can be resolved to a FieldSync account via `clickup_user_mapping.clickup_user_id` at query time.
+
+#### Web app assignment flow with mapping
+
+When a PM assigns a survey in the web app:
+
+1. The assignee picker loads from `GET /api/clickup/lists/{listId}/members` — each user has `{ id, username, email, ... }`
+2. PM selects a person (identified by `clickup_user_id`)
+3. Server writes to DB: `assignee = clickup_username`, `assignee_clickup_id = clickup_user_id`, `assigned_by = pm_display_name`, `assigned_by_clickup_id = pm_clickup_user_id`
+4. Server fires `PUT /task/{clickup_task_id}` with `{ assignees: { add: [clickup_user_id], rem: [prev_clickup_user_id] } }`
+
+#### Inbound webhook user resolution
+
+When ClickUp fires a webhook with an assignment change:
+
+1. `history_items[].after.id` → the new assignee's ClickUp user ID
+2. Look up `clickup_user_mapping WHERE clickup_user_id = ?` → resolve to `account_id` and display name
+3. Write `survey.assignee = clickup_username`, `survey.assignee_clickup_id = clickup_user_id`
+4. If no mapping exists: write the ClickUp username as-is, log for manual review
 
 ---
 
@@ -190,17 +407,26 @@ CREATE INDEX idx_site_visit_clickup_task ON site_visit(clickup_task_id);
 
 | Field | ClickUp → DB | DB → ClickUp | DB Only |
 |---|---|---|---|
-| `survey.assignee` | ✓ via webhook | ✓ on web app assign/reassign | — |
-| `survey.due_date` | ✓ via webhook | ✓ on web app due date set | — |
-| `survey.qa_status` | ✓ via webhook | ✓ on web app status change | — |
+| `survey.assignee` | ✓ via webhook — resolved from `clickup_user_mapping` | ✓ on web app assign/reassign | — |
+| `survey.assignee_clickup_id` | ✓ via webhook `history_items[].after.id` | ✓ sent as `assignees.add[]` on assign | — |
+| `survey.due_date` | ✓ via webhook | ✓ on web app due date set (sent as Unix ms) | — |
+| `survey.qa_status` | ✓ via webhook `history_items[].after` (resolved via `type: closed`) | ✓ on web app status change (resolved closed status name fetched at runtime) | — |
 | `survey.assigned_by` | ✓ via webhook `history_items[].user` | ✓ set from logged-in PM on web app assign | — |
+| `survey.assigned_by_clickup_id` | ✓ via webhook `history_items[].user.id` | ✓ set from PM's ClickUp user ID on web app assign | — |
 | `survey.assigned_at` | ✓ via webhook `history_items[].date` | ✓ set from server clock on web app assign | — |
 | `survey.clickup_task_id` | ✓ set on task creation | — | — |
+| `survey.site_id` | Parsed from task name `#{SiteID}` segment | — | — |
+| `survey.site_name` | Parsed from task name `({SiteName})` segment | — | — |
+| `survey.organization` | Parsed from task name customer prefix | — | — |
+| `survey.name` | Derived from task name survey type keyword | — | — |
+| `survey.priority` | ✓ via task `priority.type` (urgent/high→high, normal/null→medium, low→low) | — | — |
+| `site_visit.assignee_clickup_id` | ✓ via webhook | ✓ sent as `assignees.add[]` on assign | — |
 | `site_visit.due_date` | ✓ via webhook | ✓ on web app update | — |
 | `site_visit.processing_status` | — | — | ✓ |
 | `site_visit.inspected_at` | — | — | ✓ |
 | `site.audit_status` | — | — | ✓ computed |
 | `scans.transfer_status` | — | — | ✓ |
+| `clickup_user_mapping.*` | ✓ auto-populated on first `/list/{listId}/member` call via email match | — | — |
 
 ---
 
@@ -235,15 +461,21 @@ The `survey` table has a `qaCompletedAt` column that exists but is never populat
 ```sql
 ALTER TABLE survey
   -- Assignment tracking (synced bidirectionally with ClickUp)
-  ADD COLUMN assignee          VARCHAR(255),           -- synced: ClickUp assignee ↔ web app assignment
-  ADD COLUMN assigned_by       VARCHAR(255),           -- web app only: who made the assignment in FieldSync
-  ADD COLUMN assigned_at       TIMESTAMPTZ,            -- when the assignment was last written (either source)
+  ADD COLUMN assignee               VARCHAR(255),      -- display name: ClickUp username or web app user
+  ADD COLUMN assignee_clickup_id    INTEGER,           -- ClickUp user ID — used for API write-backs and webhook resolution
+  ADD COLUMN assigned_by            VARCHAR(255),      -- display name of who made the assignment
+  ADD COLUMN assigned_by_clickup_id INTEGER,           -- ClickUp user ID of assigner (from webhook history_items[].user.id)
+  ADD COLUMN assigned_at            TIMESTAMPTZ,       -- when the assignment was last written (either source)
 
   -- QA due date (synced bidirectionally with ClickUp)
-  ADD COLUMN due_date          DATE,                   -- synced: ClickUp due date ↔ web app stepper
+  ADD COLUMN due_date               DATE,              -- synced: ClickUp due date ↔ web app stepper
 
   -- ClickUp task linkage
-  ADD COLUMN clickup_task_id   VARCHAR(50),            -- ClickUp task ID; NULL if no linked task
+  ADD COLUMN clickup_task_id        VARCHAR(50),       -- ClickUp task ID; NULL if no linked task
+
+  -- Parsed from ClickUp task name (populated by PA flow or one-time backfill)
+  -- site_id and site_name may already exist — if not, add here; if yes, ensure they are populated
+  -- organization already exists — ensure it is populated from task name customer prefix
 
   -- qaCompletedAt already exists — needs population trigger (see below)
   -- qaStatus already exists — needs UI surfacing + ClickUp status sync (no schema change required)
@@ -278,11 +510,12 @@ Existing surveys have no assignee data. Recommended approach: treat all pre-migr
 ### Indexes
 
 ```sql
-CREATE INDEX idx_survey_assignee        ON survey(assignee);
-CREATE INDEX idx_survey_due_date        ON survey(due_date);
-CREATE INDEX idx_survey_assigned_by     ON survey(assigned_by);
-CREATE INDEX idx_survey_qa_status       ON survey(qa_status);
-CREATE INDEX idx_survey_clickup_task_id ON survey(clickup_task_id);
+CREATE INDEX idx_survey_assignee             ON survey(assignee);
+CREATE INDEX idx_survey_assignee_clickup_id  ON survey(assignee_clickup_id);
+CREATE INDEX idx_survey_due_date             ON survey(due_date);
+CREATE INDEX idx_survey_assigned_by          ON survey(assigned_by);
+CREATE INDEX idx_survey_qa_status            ON survey(qa_status);
+CREATE INDEX idx_survey_clickup_task_id      ON survey(clickup_task_id);
 ```
 
 ### qaStatus UI Surfacing
@@ -682,28 +915,33 @@ CREATE TYPE site_audit_enum ...;
 -- Note: survey_status_enum is NOT needed — qaStatus already covers workflow state
 -- Note: scan_transfer_status_enum already exists — confirm values match, no CREATE needed
 
--- 2. Alter survey table (assignment + due_date + clickup_task_id)
+-- 2. Create clickup_user_mapping table (referenced by survey + site_visit additions)
+CREATE TABLE clickup_user_mapping ...;
+
+-- 3. Alter survey table (assignment + assignee_clickup_id + due_date + clickup_task_id + site_id/name parsed fields)
 ALTER TABLE survey ADD COLUMN ...;
 
--- 3. Alter site_visit table (processing lifecycle + due_date + clickup_task_id)
+-- 4. Alter site_visit table (processing lifecycle + assignee_clickup_id + due_date + clickup_task_id)
 ALTER TABLE site_visit ADD COLUMN ...;
 
--- 4. Create site_visit_contributor junction table
+-- 5. Create site_visit_contributor junction table
 CREATE TABLE site_visit_contributor ...;
 
--- 5. Alter site table
+-- 6. Alter site table
 ALTER TABLE site ADD COLUMN ...;
 
--- 6. Alter scans table (transfer_status already exists — add allocated_at, allocated_by, uploaded_at, notes only)
+-- 7. Alter scans table (transfer_status already exists — add allocated_at, allocated_by, uploaded_at, notes only)
 ALTER TABLE scans ADD COLUMN ...;
 
--- 7. Create compliance function and trigger
+-- 8. Create compliance function and trigger
 CREATE FUNCTION compute_audit_status ...;
 CREATE TRIGGER site_audit_trigger ...;
 
--- 8. Run backfills (survey → site_visit → site → scans)
--- 9. Run index creation (including clickup_task_id indexes)
--- 10. Populate clickup_task_id on existing rows by matching ClickUp tasks to survey/site_visit records
+-- 9. Run backfills (survey → site_visit → site → scans)
+-- 10. Run index creation (including clickup_task_id and clickup_user_id indexes)
+-- 11. Auto-populate clickup_user_mapping by matching /list/{listId}/member emails against account.email
+-- 12. Populate clickup_task_id on existing rows by matching ClickUp tasks to survey/site_visit records
+-- 13. Backfill assignee_clickup_id on survey/site_visit where assignee name matches clickup_user_mapping.clickup_username
 ```
 
 ---
@@ -721,9 +959,11 @@ CREATE TRIGGER site_audit_trigger ...;
 | 7 | Should contributors on site_visit include QA reviewers? | **Resolved** | Yes — `contribution` values: `surveyor`, `processor`, `reviewer` |
 | 8 | Should there be a `transfer_status` transition log table? | **Open** | Needed if full history of transfer state changes (who triggered each, when) must be preserved |
 | 13 | What are the actual current `transfer_status` enum values in the DB? | **Open** | Required to confirm the enum values match the proposal before running backfill |
-| 9 | How are existing surveys matched to ClickUp tasks for the initial `clickup_task_id` population? | **Open** | Needs a matching strategy — by name, by custom field in ClickUp, or manual linking. Required before ClickUp sync can go live |
-| 10 | Does ClickUp's webhook payload include the assignee's name or only their ClickUp user ID? | **Open** | Affects whether `survey.assignee` stores a name or a ClickUp user ID — and whether a user lookup is needed on inbound webhooks |
+| 9 | How are existing surveys matched to ClickUp tasks for the initial `clickup_task_id` population? | **Resolved** | Three-signal reconciliation algorithm: (1) site ID extracted from ClickUp task name `#SiteID` matches `survey.site_id`, (2) survey type keyword in task name maps to `survey.scope`, (3) submission timestamps within ±2 hr. All three must match. Guy Facilities surveys (excluded from Power Automate) require manual matching. A one-time historical backfill pass runs this algorithm against all NULL `clickup_task_id` rows and outputs unmatched records to CSV for manual review. See Survey–Task Reconciliation section. |
+| 10 | Does ClickUp's webhook payload include the assignee's name or only their ClickUp user ID? | **Resolved** | Webhooks return a user object with both `id` (integer) and `username` (string). Store `username` in `survey.assignee` for display and `id` in `survey.assignee_clickup_id` for API write-backs. Resolve to a FieldSync account via `clickup_user_mapping`. |
 | 11 | Should a web-app-only assignment (no ClickUp task yet) automatically create a new ClickUp task, or only update an existing one? | **Resolved** | YES — create a new task on first PM action when `clickup_task_id IS NULL`. Applies to Guy Facilities surveys and any Power Automate miss. Requires the ClickUp list ID to be configured per survey type. |
-| 12 | Which ClickUp status values map to `qaStatus` `not_started`, `in_progress`, `completed`? | **Open** | ClickUp status names are list-specific and configurable. Requires a mapping table or config per ClickUp list |
+| 12 | Which ClickUp status values map to `qaStatus` `not_started`, `in_progress`, `completed`? | **Partially Resolved** | The web app resolves the "done" status at runtime by calling `GET /list/{listId}` and finding the status with `type === "closed"`. For `not_started` and `in_progress`, the mapping is done by string pattern matching (`includes('progress')`, etc.). A formal `clickup_status_map` table per list is still recommended for inbound webhook handling in production. |
+| 16 | How should FieldSync accounts be linked to ClickUp users for new team members? | **Open** | Auto-link via email match on first API call is the recommended path. Requires a one-time admin review to confirm matches and manually link any mismatches. Need to decide if this is a self-service flow (user links own account) or admin-managed. |
+| 17 | Should `clickup_user_mapping` entries be scoped per ClickUp list, or global per workspace? | **Open** | Currently scoped per list for private folder access. If a user has access to multiple lists (surveys + site visits), a single mapping entry may cover both. Confirm whether ClickUp user IDs are workspace-global (they are) — a single `clickup_user_id` maps to the same person across all lists. |
 | 14 | Can the Power Automate flow be updated to write the ClickUp task ID back to the DB survey row immediately after task creation? | **Open** | If yes, this eliminates the `clickup_task_id IS NULL` gap for all non-Guy-Facilities surveys from day one. Requires PA to call a FieldSync API endpoint or write directly to the DB. |
 | 15 | What is the ClickUp list ID (and is it the same list for all survey types, or per-org/per-type)? | **Open** | Required for `POST /list/{list_id}/task` calls. Guy Facilities may use a different list than standard surveys. |

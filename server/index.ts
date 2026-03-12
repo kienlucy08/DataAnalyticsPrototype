@@ -219,6 +219,149 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
+// ---------------------------------------------------------------------------
+// ClickUp Integration Routes
+// ---------------------------------------------------------------------------
+
+const CLICKUP_BASE = 'https://api.clickup.com/api/v2'
+
+function clickupHeaders() {
+  const key = process.env.CLICKUP_API_KEY
+  if (!key) return null
+  return { Authorization: key, 'Content-Type': 'application/json' }
+}
+
+// Mock data — returned when CLICKUP_API_KEY is not set
+function mockTasks(listId: string) {
+  const isSurveys = listId.toLowerCase().includes('survey') || listId === 'mock_surveys'
+  const now = Date.now()
+  const day = 86400000
+
+  if (isSurveys) {
+    return [
+      { id: 'cu_s001', name: 'Survey – AT&T Tower Bravo Site #4521', status: { status: 'in progress', color: '#4194f6', type: 'custom' }, assignees: [{ id: 1001, username: 'Matt Edrich', email: 'matt@fieldsync.io', color: '#e06c75', initials: 'ME', profilePicture: null }], due_date: String(now + 7 * day), priority: { id: '2', priority: 'high', color: '#ffcc00' }, url: 'https://app.clickup.com/t/cu_s001', date_created: String(now - 14 * day), date_updated: String(now - day) },
+      { id: 'cu_s002', name: 'Survey – Verizon Crown Castle Rooftop', status: { status: 'review', color: '#a4bdfc', type: 'custom' }, assignees: [{ id: 1002, username: 'John Smith', email: 'john@fieldsync.io', color: '#61afef', initials: 'JS', profilePicture: null }], due_date: String(now - 2 * day), priority: { id: '1', priority: 'urgent', color: '#ff4444' }, url: 'https://app.clickup.com/t/cu_s002', date_created: String(now - 21 * day), date_updated: String(now - 2 * day) },
+      { id: 'cu_s003', name: 'Survey – T-Mobile Urban Monopole #7B', status: { status: 'not started', color: '#8b9ab5', type: 'open' }, assignees: [], due_date: String(now + 14 * day), priority: { id: '3', priority: 'normal', color: '#f7a44f' }, url: 'https://app.clickup.com/t/cu_s003', date_created: String(now - 3 * day), date_updated: String(now - 3 * day) },
+      { id: 'cu_s004', name: 'Survey – Guy Facilities Guyed Tower Alpha', status: { status: 'not started', color: '#8b9ab5', type: 'open' }, assignees: [], due_date: null, priority: null, url: 'https://app.clickup.com/t/cu_s004', date_created: String(now - 1 * day), date_updated: String(now - 1 * day) },
+      { id: 'cu_s005', name: 'Survey – Sprint Legacy Self-Support Site', status: { status: 'complete', color: '#6f3dc4', type: 'closed' }, assignees: [{ id: 1002, username: 'John Smith', email: 'john@fieldsync.io', color: '#61afef', initials: 'JS', profilePicture: null }], due_date: String(now - 10 * day), priority: { id: '3', priority: 'normal', color: '#f7a44f' }, url: 'https://app.clickup.com/t/cu_s005', date_created: String(now - 30 * day), date_updated: String(now - 8 * day) },
+      { id: 'cu_s006', name: 'Survey – FieldSync Test Site Alpha', status: { status: 'in progress', color: '#4194f6', type: 'custom' }, assignees: [{ id: 1001, username: 'Matt Edrich', email: 'matt@fieldsync.io', color: '#e06c75', initials: 'ME', profilePicture: null }], due_date: String(now + 3 * day), priority: { id: '2', priority: 'high', color: '#ffcc00' }, url: 'https://app.clickup.com/t/cu_s006', date_created: String(now - 7 * day), date_updated: String(now - 2 * day) },
+      { id: 'cu_s007', name: 'Survey – Coastal Guyed Tower – Guy Facilities', status: { status: 'not started', color: '#8b9ab5', type: 'open' }, assignees: [], due_date: null, priority: { id: '4', priority: 'low', color: '#6699ff' }, url: 'https://app.clickup.com/t/cu_s007', date_created: String(now - 2 * day), date_updated: String(now - 2 * day) },
+      { id: 'cu_s008', name: 'Survey – Industrial Site – Crown Castle', status: { status: 'complete', color: '#6f3dc4', type: 'closed' }, assignees: [{ id: 1001, username: 'Matt Edrich', email: 'matt@fieldsync.io', color: '#e06c75', initials: 'ME', profilePicture: null }], due_date: String(now - 15 * day), priority: { id: '3', priority: 'normal', color: '#f7a44f' }, url: 'https://app.clickup.com/t/cu_s008', date_created: String(now - 35 * day), date_updated: String(now - 12 * day) },
+    ]
+  }
+
+  return [
+    { id: 'cu_v001', name: 'Site Visit – Tower Alpha Inspection Q1', status: { status: 'in progress', color: '#4194f6', type: 'custom' }, assignees: [{ id: 1001, username: 'Matt Edrich', email: 'matt@fieldsync.io', color: '#e06c75', initials: 'ME', profilePicture: null }], due_date: String(now + 5 * day), priority: { id: '2', priority: 'high', color: '#ffcc00' }, url: 'https://app.clickup.com/t/cu_v001', date_created: String(now - 10 * day), date_updated: String(now - day) },
+    { id: 'cu_v002', name: 'Site Visit – Rural Crown Castle Site B', status: { status: 'not started', color: '#8b9ab5', type: 'open' }, assignees: [], due_date: String(now + 10 * day), priority: { id: '3', priority: 'normal', color: '#f7a44f' }, url: 'https://app.clickup.com/t/cu_v002', date_created: String(now - 4 * day), date_updated: String(now - 4 * day) },
+    { id: 'cu_v003', name: 'Site Visit – Downtown Monopole Review', status: { status: 'complete', color: '#6f3dc4', type: 'closed' }, assignees: [{ id: 1002, username: 'John Smith', email: 'john@fieldsync.io', color: '#61afef', initials: 'JS', profilePicture: null }], due_date: String(now - 5 * day), priority: { id: '3', priority: 'normal', color: '#f7a44f' }, url: 'https://app.clickup.com/t/cu_v003', date_created: String(now - 20 * day), date_updated: String(now - 4 * day) },
+    { id: 'cu_v004', name: 'Site Visit – Suburban Self-Support Inspection', status: { status: 'in progress', color: '#4194f6', type: 'custom' }, assignees: [{ id: 1001, username: 'Matt Edrich', email: 'matt@fieldsync.io', color: '#e06c75', initials: 'ME', profilePicture: null }], due_date: String(now + 2 * day), priority: { id: '1', priority: 'urgent', color: '#ff4444' }, url: 'https://app.clickup.com/t/cu_v004', date_created: String(now - 8 * day), date_updated: String(now - day) },
+    { id: 'cu_v005', name: 'Site Visit – Coastal Guyed Tower Assessment', status: { status: 'not started', color: '#8b9ab5', type: 'open' }, assignees: [], due_date: String(now + 21 * day), priority: { id: '4', priority: 'low', color: '#6699ff' }, url: 'https://app.clickup.com/t/cu_v005', date_created: String(now - 1 * day), date_updated: String(now - 1 * day) },
+    { id: 'cu_v006', name: 'Site Visit – Industrial Site Full Review', status: { status: 'complete', color: '#6f3dc4', type: 'closed' }, assignees: [{ id: 1002, username: 'John Smith', email: 'john@fieldsync.io', color: '#61afef', initials: 'JS', profilePicture: null }], due_date: String(now - 12 * day), priority: { id: '2', priority: 'high', color: '#ffcc00' }, url: 'https://app.clickup.com/t/cu_v006', date_created: String(now - 30 * day), date_updated: String(now - 10 * day) },
+  ]
+}
+
+function mockMembers() {
+  return [
+    { id: 1001, username: 'Matt Edrich',  email: 'matt@fieldsync.io',   color: '#e06c75', initials: 'ME', profilePicture: null },
+    { id: 1002, username: 'John Smith',   email: 'john@fieldsync.io',   color: '#61afef', initials: 'JS', profilePicture: null },
+    { id: 1003, username: 'Susan Smith',  email: 'susan@fieldsync.io',  color: '#56b6c2', initials: 'SS', profilePicture: null },
+    { id: 1004, username: 'Jayden Smith', email: 'jayden@fieldsync.io', color: '#9b59b6', initials: 'JY', profilePicture: null },
+  ]
+}
+
+function mockListMeta(listId: string) {
+  const isSurveys = listId.toLowerCase().includes('survey') || listId === 'mock_surveys'
+  return {
+    id: listId,
+    name: isSurveys ? 'Surveys' : 'Site Visits',
+    statuses: [
+      { status: 'not started', color: '#8b9ab5', type: 'open' },
+      { status: 'in progress', color: '#4194f6', type: 'custom' },
+      { status: 'review', color: '#a4bdfc', type: 'custom' },
+      { status: 'complete', color: '#6f3dc4', type: 'closed' },
+    ],
+  }
+}
+
+// GET /api/clickup/lists/:listId/tasks
+app.get('/api/clickup/lists/:listId/tasks', async (req, res) => {
+  const { listId } = req.params
+  const headers = clickupHeaders()
+  if (!headers) {
+    res.json({ tasks: mockTasks(listId), source: 'mock' })
+    return
+  }
+  try {
+    const response = await fetch(`${CLICKUP_BASE}/list/${listId}/task?include_closed=true&page=0`, { headers })
+    const data = await response.json() as { tasks?: unknown[]; err?: string }
+    if (data.err) { res.status(400).json({ error: data.err }); return }
+    res.json({ tasks: data.tasks ?? [], source: 'clickup' })
+  } catch (err) {
+    res.status(500).json({ error: errMsg(err) })
+  }
+})
+
+// GET /api/clickup/lists/:listId — list metadata (name + statuses)
+app.get('/api/clickup/lists/:listId', async (req, res) => {
+  const { listId } = req.params
+  const headers = clickupHeaders()
+  if (!headers) {
+    res.json({ ...mockListMeta(listId), source: 'mock' })
+    return
+  }
+  try {
+    const response = await fetch(`${CLICKUP_BASE}/list/${listId}`, { headers })
+    const data = await response.json() as { err?: string }
+    if (data.err) { res.status(400).json({ error: data.err }); return }
+    res.json({ ...data, source: 'clickup' })
+  } catch (err) {
+    res.status(500).json({ error: errMsg(err) })
+  }
+})
+
+// GET /api/clickup/lists/:listId/members — members with access to a specific list (respects private folder visibility)
+app.get('/api/clickup/lists/:listId/members', async (req, res) => {
+  const { listId } = req.params
+  const headers = clickupHeaders()
+  if (!headers) {
+    res.json({ members: mockMembers(), source: 'mock' })
+    return
+  }
+  try {
+    const response = await fetch(`${CLICKUP_BASE}/list/${listId}/member`, { headers })
+    const data = await response.json() as { members?: unknown[]; err?: string }
+    if (data.err) { res.status(400).json({ error: data.err }); return }
+    res.json({ members: data.members ?? [], source: 'clickup' })
+  } catch (err) {
+    res.status(500).json({ error: errMsg(err) })
+  }
+})
+
+// PUT /api/clickup/tasks/:taskId — update status, assignees, due_date
+app.put('/api/clickup/tasks/:taskId', async (req, res) => {
+  const { taskId } = req.params
+  const headers = clickupHeaders()
+  const body = req.body as Record<string, unknown>
+
+  if (!headers) {
+    // Mock: echo back the update so the frontend can apply optimistic state
+    res.json({ id: taskId, ...body, source: 'mock' })
+    return
+  }
+  try {
+    const response = await fetch(`${CLICKUP_BASE}/task/${taskId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body),
+    })
+    const data = await response.json() as { err?: string }
+    if (data.err) { res.status(400).json({ error: data.err }); return }
+    res.json({ ...data, source: 'clickup' })
+  } catch (err) {
+    res.status(500).json({ error: errMsg(err) })
+  }
+})
+
 app.listen(port, () => {
   console.log(`[Server] MCP bridge running on http://localhost:${port}`)
 })

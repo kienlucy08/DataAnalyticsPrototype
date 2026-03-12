@@ -14,13 +14,12 @@ import {
   Zap,
 } from 'lucide-react'
 import { useRole } from '../../context/RoleContext'
-import type { Role } from '../../context/RoleContext'
+import { useProto } from '../../context/PrototypeContext'
 
 interface NavItem {
   label: string
   path: string
   icon: React.ReactNode
-  roles?: Role[]
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -36,32 +35,22 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 const ANALYTICS_ITEMS: NavItem[] = [
-  {
-    label: 'PowerBI Dashboard',
-    path: '/powerbi-dashboard',
-    icon: <Monitor size={18} />,
-    roles: ['admin', 'org_owner', 'pm', 'qc_technician', 'qc_technician_2'],
-  },
-  {
-    label: 'Custom Data Analytics',
-    path: '/custom-data-analytics',
-    icon: <BarChart3 size={18} />,
-    roles: ['admin', 'org_owner', 'pm', 'qc_technician', 'qc_technician_2'],
-  },
-  {
-    label: 'My Custom Dashboard',
-    path: '/custom-dashboard',
-    icon: <LayoutDashboard size={18} />,
-    roles: ['admin', 'org_owner', 'pm', 'qc_technician', 'qc_technician_2'],
-  },
+  { label: 'PowerBI Dashboard',     path: '/powerbi-dashboard',     icon: <Monitor size={18} /> },
+  { label: 'Custom Data Analytics', path: '/custom-data-analytics', icon: <BarChart3 size={18} /> },
+  { label: 'My Custom Dashboard',   path: '/custom-dashboard',      icon: <LayoutDashboard size={18} /> },
+]
+
+const CLICKUP_NAV: NavItem[] = [
+  { label: 'QA Dashboard', path: '/qa-dashboard', icon: <LayoutDashboard size={18} /> },
 ]
 
 const Sidebar: React.FC = () => {
   const { role } = useRole()
+  const { proto } = useProto()
 
-  const canSeeAnalytics = ANALYTICS_ITEMS.some(
-    item => !item.roles || item.roles.includes(role)
-  )
+  const isClickUpRole = role === 'clickup_pm' || role === 'clickup_technician'
+  const navItems = (proto === 2 || isClickUpRole) ? CLICKUP_NAV : NAV_ITEMS
+  const showAnalytics = proto === 1 && !isClickUpRole
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     [
@@ -93,22 +82,22 @@ const Sidebar: React.FC = () => {
 
       {/* Main nav */}
       <nav className="flex flex-col gap-0.5 px-3 pb-4 flex-1">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLink key={item.path} to={item.path} className={linkClass}>
             {item.icon}
             <span>{item.label}</span>
           </NavLink>
         ))}
 
-        {/* Analytics section */}
-        {canSeeAnalytics && (
+        {/* Analytics — only in Proto 1, not for ClickUp roles */}
+        {showAnalytics && (
           <>
             <div className="mt-5 mb-1 px-4">
               <span className="text-text-muted text-xs font-semibold uppercase tracking-widest">
                 Analytics
               </span>
             </div>
-            {ANALYTICS_ITEMS.filter(item => !item.roles || item.roles.includes(role)).map(item => (
+            {ANALYTICS_ITEMS.map(item => (
               <NavLink key={item.path} to={item.path} className={linkClass}>
                 {item.icon}
                 <span>{item.label}</span>
@@ -120,7 +109,9 @@ const Sidebar: React.FC = () => {
 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-border">
-        <span className="text-text-muted text-xs">v1.0.0 · prototype</span>
+        <span className="text-text-muted text-xs">
+          {proto === 2 ? 'ClickUp Live · prototype' : 'Analytics Demo · prototype'}
+        </span>
       </div>
     </aside>
   )

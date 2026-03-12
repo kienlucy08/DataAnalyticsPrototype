@@ -13,11 +13,14 @@ import Templates from './pages/Templates'
 import Import from './pages/Import'
 import Organization from './pages/Organization'
 import DemoGuide from './pages/DemoGuide'
+import ClickUpIntegration from './pages/ClickUpIntegration'
 import { DashboardProvider } from './context/DashboardContext'
 import { DemoProvider } from './context/DemoContext'
+import { PrototypeProvider } from './context/PrototypeContext'
 
 const App: React.FC = () => (
   <BrowserRouter>
+    <PrototypeProvider>
     <DashboardProvider>
       <DemoProvider>
         <Routes>
@@ -35,11 +38,13 @@ const App: React.FC = () => (
             <Route path="custom-data-analytics" element={<DataAnalytics />} />
             <Route path="custom-dashboard"      element={<Dashboard />} />
             <Route path="demo"                  element={<DemoGuide />} />
+            <Route path="clickup"              element={<ClickUpIntegration />} />
             <Route path="*" element={<Navigate to="/qa-dashboard" replace />} />
           </Route>
         </Routes>
       </DemoProvider>
     </DashboardProvider>
+    </PrototypeProvider>
   </BrowserRouter>
 )
 

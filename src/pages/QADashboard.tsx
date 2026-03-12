@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   ClipboardCheck, Clock, CheckCircle2, AlertCircle, TrendingUp,
   ChevronDown, ChevronRight, Search, MoreHorizontal, XCircle,
   UserCheck, Users, Lock, Pencil, Plus, X, Building2, MapPin,
+  RefreshCw, Wifi,
 } from 'lucide-react'
 import { useRole } from '../context/RoleContext'
 import { useDashboard } from '../context/DashboardContext'
@@ -174,6 +175,8 @@ const ROLE_ORGS: Record<string, string[]> = {
   pm:              ['FieldSync Org', 'Test Org'],
   qc_technician:   ['FieldSync Org', 'Test Org'],
   qc_technician_2: ['FieldSync Org', 'Test Org'],
+  clickup_pm:          [],
+  clickup_technician:  [],
 }
 
 const ORG_SURVEYS     = ALL_SURVEYS.filter(s => ORG_FILTER.includes(s.organization))
@@ -1099,12 +1102,13 @@ interface AssignModalProps {
   survey: Survey
   onClose: () => void
   onConfirm: (surveyId: string, assignee: string, dueDate: string | null) => void
+  cuMembers?: CUMember[]
 }
 
-function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
-  const [step, setStep]           = useState<'assignee' | 'due_date'>('assignee')
-  const [selected, setSelected]   = useState(survey.assignee ?? '')
-  const [dueDate, setDueDate]     = useState<string | null>(null)
+function AssignModal({ survey, onClose, onConfirm, cuMembers }: AssignModalProps) {
+  const [step, setStep]             = useState<'assignee' | 'due_date'>('assignee')
+  const [selected, setSelected]     = useState(survey.assignee ?? '')
+  const [dueDate, setDueDate]       = useState<string | null>(null)
   const [customDate, setCustomDate] = useState('')
   const isReassign = Boolean(survey.assignee)
 
@@ -1114,16 +1118,16 @@ function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
   const fmtDisplay = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const fmtInput   = (d: Date) => d.toISOString().split('T')[0]
 
+  const QUICK_DATES = [
+    { label: '+7 days',  sub: fmtDisplay(plus7),  value: fmtDisplay(plus7) },
+    { label: '+14 days', sub: fmtDisplay(plus14), value: fmtDisplay(plus14) },
+  ]
+
   const handleFinalAssign = (skipDueDate = false) => {
     const finalDate = skipDueDate ? null : (dueDate ?? (customDate ? new Date(customDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null))
     onConfirm(survey.id, selected, finalDate)
     onClose()
   }
-
-  const QUICK_DATES = [
-    { label: '+7 days',  sub: fmtDisplay(plus7),  value: fmtDisplay(plus7) },
-    { label: '+14 days', sub: fmtDisplay(plus14), value: fmtDisplay(plus14) },
-  ]
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -1166,7 +1170,7 @@ function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
           <div className="flex items-center gap-2 pt-0.5 flex-wrap">
             <PriorityBadge priority={getEffectivePriority(survey)} />
             <StatusBadge status={survey.status} />
-            {step === 'due_date' && selected && (
+            {step === 'due_date' && selected && selected !== survey.assignee && (
               <span className="text-[10px] text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full flex items-center gap-1">
                 <UserCheck size={9} /> {selected}
               </span>
@@ -1181,39 +1185,37 @@ function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
 
         {/* Step 1 — Assignee picker */}
         {step === 'assignee' && (
-          <div className="px-5 py-4">
+          <div className="px-5 py-4 max-h-72 overflow-y-auto">
             <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider mb-3">
-              {isReassign ? 'Reassign to' : 'Assign to'}
+              {isReassign ? 'Reassign to' : 'Assign to'} <span className="normal-case font-normal ml-1">(recommended)</span>
             </div>
             <div className="space-y-2">
-              {ASSIGNABLE_USERS.map(name => {
-                const initials  = name.split(' ').map(n => n[0]).join('')
-                const isSelf    = name === 'Susan Smith'
+              {(cuMembers ? cuMembers.map(m => m.username) : ASSIGNABLE_USERS).map(name => {
+                const member    = cuMembers?.find(m => m.username === name)
+                const initials  = member?.initials ?? name.split(' ').map(n => n[0]).join('')
+                const isSelf    = cuMembers ? false : name === 'Susan Smith'
                 const isCurrent = name === survey.assignee
                 return (
                   <button
                     key={name}
                     onClick={() => setSelected(name)}
-                    disabled={isCurrent}
                     className={[
                       'w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors flex items-center gap-3',
-                      isCurrent
-                        ? 'border-border bg-surface/30 opacity-40 cursor-not-allowed'
-                        : selected === name
+                      selected === name
                         ? 'border-accent bg-accent/10 text-text-primary'
                         : 'border-border bg-surface hover:border-accent/40 text-text-secondary',
                     ].join(' ')}
                   >
                     <div className={[
                       'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0',
-                      selected === name && !isCurrent ? 'bg-accent text-white' : 'bg-surface border border-border text-text-muted',
+                      selected === name ? 'bg-accent text-white' : 'bg-surface border border-border text-text-muted',
                     ].join(' ')}>
                       {initials}
                     </div>
                     <span className="flex-1">{name}</span>
                     {isSelf && <span className="text-[9px] text-text-muted bg-surface border border-border px-1.5 py-0.5 rounded">You</span>}
                     {isCurrent && <span className="text-[9px] text-text-muted">Current</span>}
-                    {selected === name && !isCurrent && <CheckCircle2 size={14} className="text-accent shrink-0" />}
+                    {selected === name && <CheckCircle2 size={14} className="text-accent shrink-0" />}
                   </button>
                 )
               })}
@@ -1224,7 +1226,9 @@ function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
         {/* Step 2 — Due date */}
         {step === 'due_date' && (
           <div className="px-5 py-4">
-            <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider mb-3">Set Due Date</div>
+            <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider mb-3">
+              Set Due Date <span className="normal-case font-normal ml-1">(recommended)</span>
+            </div>
             <div className="space-y-2">
               {QUICK_DATES.map(opt => (
                 <button
@@ -1297,13 +1301,21 @@ function AssignModal({ survey, onClose, onConfirm }: AssignModalProps) {
               >
                 Cancel
               </button>
-              <button
-                onClick={() => setStep('due_date')}
-                disabled={!selected || selected === survey.assignee}
-                className="px-4 py-2 text-xs font-semibold bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-              >
-                Next →
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setStep('due_date')}
+                  className="px-4 py-2 text-xs text-text-secondary hover:text-text-primary border border-border rounded-lg hover:border-accent/40 transition-colors"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={() => setStep('due_date')}
+                  disabled={!selected || selected === survey.assignee}
+                  className="px-4 py-2 text-xs font-semibold bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next →
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -1535,10 +1547,11 @@ function UnblockModal({ survey, blockers, onClose, onConfirm }: {
 
 // ─── Survey Detail Page ───────────────────────────────────────────────────────
 
-function SurveyDetailPage({ survey, onClose, onMarkComplete }: {
+function SurveyDetailPage({ survey, onClose, onMarkComplete, onUpdate }: {
   survey: Survey
   onClose: () => void
   onMarkComplete: (id: string) => void
+  onUpdate: (id: string, updates: Partial<Survey>) => void
 }) {
   type SectionState = SurveySection & { open: boolean }
   const [sections, setSections] = React.useState<SectionState[]>(() =>
@@ -1546,6 +1559,15 @@ function SurveyDetailPage({ survey, onClose, onMarkComplete }: {
   )
   const [aiOpen, setAiOpen] = React.useState(false)
   const [confirmComplete, setConfirmComplete] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
+  const [editData, setEditData] = React.useState({
+    siteName: survey.siteName,
+    siteId: survey.siteId,
+    organization: survey.organization,
+    scope: survey.scope,
+    status: survey.status,
+    dueDate: survey.dueDate ?? '',
+  })
 
   const allFields = sections.flatMap(s => s.fields)
   const completedCount = allFields.filter(f => f.completed).length
@@ -1648,38 +1670,125 @@ function SurveyDetailPage({ survey, onClose, onMarkComplete }: {
 
         {/* Site info card */}
         <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-text-primary font-semibold">{survey.name}</h2>
-            <button onClick={onClose} className="text-accent text-sm hover:text-accent-hover transition-colors font-medium">
-              Go Back
-            </button>
+            <div className="flex items-center gap-2">
+              {!editing && (
+                <button
+                  onClick={() => { setEditData({ siteName: survey.siteName, siteId: survey.siteId, organization: survey.organization, scope: survey.scope, status: survey.status, dueDate: survey.dueDate ?? '' }); setEditing(true) }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary border border-border rounded-lg hover:border-accent/40 hover:text-text-primary transition-colors"
+                >
+                  <Pencil size={12} /> Edit Details
+                </button>
+              )}
+              {editing && (
+                <>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-1.5 text-xs text-text-secondary border border-border rounded-lg hover:border-accent/40 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const updates: Partial<Survey> = {
+                        siteName: editData.siteName,
+                        siteId: editData.siteId,
+                        organization: editData.organization,
+                        scope: editData.scope,
+                        status: editData.status as SurveyStatus,
+                        dueDate: editData.dueDate || undefined,
+                      }
+                      if (editData.status === 'completed' && survey.status !== 'completed') {
+                        const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        updates.completedDate = today
+                        updates.progress = 100
+                      }
+                      onUpdate(survey.id, updates)
+                      setEditing(false)
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 size={12} /> Save Changes
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex gap-6 flex-col sm:flex-row">
-            <div className="flex-1 space-y-2 text-sm">
-              {[
-                { label: 'Site Name',    value: survey.siteName },
-                { label: 'Site ID',      value: survey.siteId },
-                { label: 'Survey Type',  value: SCOPE_LABEL[survey.scope] },
-                { label: 'Organization', value: survey.organization },
-                { label: 'Assignee',     value: survey.assignee ?? '—' },
-                { label: 'Due Date',     value: survey.dueDate ?? '—' },
-                { label: 'Status',       value: survey.status },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex gap-2">
-                  <span className="text-text-primary font-semibold min-w-[110px] shrink-0">{label}:</span>
-                  <span className="text-text-secondary">{value}</span>
+
+          {!editing ? (
+            <div className="flex gap-6 flex-col sm:flex-row">
+              <div className="flex-1 space-y-2 text-sm">
+                {[
+                  { label: 'Site Name',    value: survey.siteName },
+                  { label: 'Site ID',      value: survey.siteId },
+                  { label: 'Survey Type',  value: SCOPE_LABEL[survey.scope] },
+                  { label: 'Organization', value: survey.organization },
+                  { label: 'Assignee',     value: survey.assignee ?? '—' },
+                  { label: 'Due Date',     value: survey.dueDate ?? '—' },
+                  { label: 'Status',       value: STATUS_LABELS[survey.status] },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex gap-2">
+                    <span className="text-text-primary font-semibold min-w-[110px] shrink-0">{label}:</span>
+                    <span className="text-text-secondary">{value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="w-full sm:w-52 h-40 rounded-xl border border-border bg-gradient-to-br from-surface to-card flex flex-col items-center justify-center gap-2 shrink-0 overflow-hidden">
+                <div className="w-9 h-9 rounded-full bg-red-400/10 border border-red-400/30 flex items-center justify-center">
+                  <MapPin size={18} className="text-red-400" />
+                </div>
+                <span className="text-text-secondary text-xs font-medium text-center px-3">{survey.siteName}</span>
+                <span className="text-text-muted text-[11px] font-mono">{survey.siteId}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              {([
+                { key: 'siteName',     label: 'Site Name',    type: 'text' },
+                { key: 'siteId',       label: 'Site ID',      type: 'text' },
+                { key: 'organization', label: 'Organization', type: 'text' },
+                { key: 'dueDate',      label: 'Due Date',     type: 'date' },
+              ] as { key: keyof typeof editData; label: string; type: string }[]).map(({ key, label, type }) => (
+                <div key={key}>
+                  <label className="block text-[10px] text-text-muted font-medium uppercase tracking-wider mb-1.5">{label}</label>
+                  <input
+                    type={type}
+                    value={editData[key]}
+                    onChange={e => setEditData(prev => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-accent transition-colors"
+                  />
                 </div>
               ))}
-            </div>
-            {/* Map placeholder */}
-            <div className="w-full sm:w-52 h-40 rounded-xl border border-border bg-gradient-to-br from-surface to-card flex flex-col items-center justify-center gap-2 shrink-0 overflow-hidden">
-              <div className="w-9 h-9 rounded-full bg-red-400/10 border border-red-400/30 flex items-center justify-center">
-                <MapPin size={18} className="text-red-400" />
+              <div>
+                <label className="block text-[10px] text-text-muted font-medium uppercase tracking-wider mb-1.5">Survey Type</label>
+                <select
+                  value={editData.scope}
+                  onChange={e => setEditData(prev => ({ ...prev, scope: e.target.value as SurveyScope }))}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-accent transition-colors"
+                >
+                  {(Object.entries(SCOPE_LABEL) as [SurveyScope, string][]).map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
               </div>
-              <span className="text-text-secondary text-xs font-medium text-center px-3">{survey.siteName}</span>
-              <span className="text-text-muted text-[11px] font-mono">{survey.siteId}</span>
+              <div>
+                <label className="block text-[10px] text-text-muted font-medium uppercase tracking-wider mb-1.5">Status</label>
+                <select
+                  value={editData.status}
+                  onChange={e => setEditData(prev => ({ ...prev, status: e.target.value as SurveyStatus }))}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-accent transition-colors"
+                >
+                  {(Object.entries(STATUS_LABELS) as [SurveyStatus, string][]).map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2 text-[11px] text-text-muted">
+                Assignee is managed via the Assign button.
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Accordion sections */}
@@ -1746,7 +1855,7 @@ function SurveyDetailPage({ survey, onClose, onMarkComplete }: {
 
 // ─── PM Surveys Content (split: Needs Assignment + Assigned) ───────────────
 
-function PMSurveysContent({ surveys, onAssign, onSelectSurvey }: { surveys: Survey[]; onAssign: (id: string, assignee: string, dueDate: string | null) => void; onSelectSurvey?: (id: string) => void }) {
+function PMSurveysContent({ surveys, onAssign, onSelectSurvey, cuMembers }: { surveys: Survey[]; onAssign: (id: string, assignee: string, dueDate: string | null) => void; onSelectSurvey?: (id: string) => void; cuMembers?: CUMember[] }) {
   const [modalSurvey, setModalSurvey] = useState<Survey | null>(null)
   const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
   const unassigned = [...surveys.filter(s => s.status === 'unassigned')]
@@ -1768,6 +1877,7 @@ function PMSurveysContent({ surveys, onAssign, onSelectSurvey }: { surveys: Surv
           survey={modalSurvey}
           onClose={() => setModalSurvey(null)}
           onConfirm={handleConfirm}
+          cuMembers={cuMembers}
         />
       )}
 
@@ -2362,6 +2472,435 @@ function QcTech2View({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSe
   )
 }
 
+// ─── ClickUp PM View ────────────────────────────────────────────────────────
+
+const CU_API = 'http://localhost:3001'
+const CU_SURVEYS_LIST     = import.meta.env.VITE_CLICKUP_SURVEYS_LIST_ID     || 'mock_surveys'
+const CU_SITE_VISITS_LIST = import.meta.env.VITE_CLICKUP_SITE_VISITS_LIST_ID || 'mock_site_visits'
+const CU_PM_NAME   = 'Lucy Kien'
+const CU_TECH_NAME = 'Matt Edrich'
+
+interface CUStatus   { status: string; color: string; type: string }
+interface CUAssignee { id: number; username: string; color: string; initials: string }
+interface CUPriority { id: string; priority: string; color: string }
+interface CUMember   { id: number; username: string; email: string; color: string; initials: string; profilePicture: string | null }
+interface CUTask {
+  id: string; name: string; status: CUStatus
+  assignees: CUAssignee[]; due_date: string | null
+  priority: CUPriority | null; url: string
+  date_created?: string
+  date_closed?: string | null
+}
+// Parse ClickUp task name: "{Customer} #{SiteID} ({SiteName}) {SurveyType} Submitted"
+const CU_SURVEY_TYPE_MAP: Array<{ keyword: RegExp; displayName: string; scope: SurveyScope }> = [
+  { keyword: /\bGuy\s+Facilities\b/i,    displayName: 'Guy Facilities Inspection',   scope: 'facilities'  },
+  { keyword: /\bStructure\s+Climb\b/i,   displayName: 'Structure Climb Inspection',  scope: 'inspection'  },
+  { keyword: /\bP&T\b|\bPlumb\b/i,       displayName: 'Plumb & Twist Inspection',    scope: 'inspection'  },
+  { keyword: /\bCompound\b/i,            displayName: 'Compound Inspection',         scope: 'inspection'  },
+  { keyword: /\bCOP\b/i,                 displayName: 'COP Inspection',              scope: 'cop'         },
+  { keyword: /\bJSA\b/i,                 displayName: 'Job Safety Analysis',         scope: 'jsa'         },
+]
+
+function parseCUTaskName(raw: string): { displayName: string; siteId: string; siteName: string; organization: string; scope: SurveyScope } {
+  const siteIdMatch  = raw.match(/#(\S+)/)
+  const siteNameMatch = raw.match(/\(([^)]+)\)/)
+  const orgMatch     = raw.match(/^([^#(]+)/)
+
+  const siteId      = siteIdMatch  ? siteIdMatch[1].trim()  : '—'
+  const siteName    = siteNameMatch ? siteNameMatch[1].trim() : '—'
+  const organization = orgMatch    ? orgMatch[1].trim()      : '—'
+
+  const matched = CU_SURVEY_TYPE_MAP.find(t => t.keyword.test(raw))
+  return {
+    displayName:  matched?.displayName ?? raw,
+    scope:        matched?.scope       ?? 'inspection',
+    siteId,
+    siteName,
+    organization,
+  }
+}
+
+// Map ClickUp task → Survey shape
+function cuTaskToSurvey(task: CUTask): Survey {
+  const assigneeName = task.assignees[0]?.username ?? undefined
+  const s = task.status.status.toLowerCase()
+  let status: SurveyStatus
+  if (s.includes('complete') || s.includes('done') || task.status.type === 'closed') {
+    status = 'completed'
+  } else if (s.includes('progress')) {
+    status = 'in_progress'
+  } else if (assigneeName) {
+    status = 'pending'
+  } else {
+    status = 'unassigned'
+  }
+  if (status !== 'completed' && task.due_date && new Date(parseInt(task.due_date)) < new Date()) {
+    status = 'overdue'
+  }
+  let priority: Priority = 'medium' // default: normal
+  if (task.priority) {
+    const p = task.priority.priority.toLowerCase()
+    if (p === 'urgent' || p === 'high') priority = 'high'
+    else if (p === 'low') priority = 'low'
+    else priority = 'medium' // 'normal' and anything else → medium
+  }
+  const fmtDate = (ms: string) => new Date(parseInt(ms)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const parsed = parseCUTaskName(task.name)
+  return {
+    id: task.id,
+    name: parsed.displayName,
+    siteId: parsed.siteId,
+    siteName: parsed.siteName,
+    organization: parsed.organization,
+    scope: parsed.scope,
+    status,
+    assignee: assigneeName,
+    progress: status === 'completed' ? 100 : status === 'in_progress' ? 50 : 0,
+    createdDate: task.date_created ? fmtDate(task.date_created) : '—',
+    completedDate: status === 'completed' && task.date_closed ? fmtDate(task.date_closed) : undefined,
+    dueDate: task.due_date ? fmtDate(task.due_date) : undefined,
+    priority,
+  }
+}
+
+// Map ClickUp task → SiteVisit shape
+function cuTaskToSiteVisit(task: CUTask): SiteVisit {
+  const assigneeName = task.assignees[0]?.username ?? 'Unassigned'
+  const s = task.status.status.toLowerCase()
+  let status: VisitStatus
+  if (s.includes('complete') || task.status.type === 'closed') status = 'completed'
+  else if (s.includes('progress')) status = 'in_progress'
+  else if (s.includes('cancel')) status = 'cancelled'
+  else status = 'scheduled'
+  const fmtDate = (ms: string) => new Date(parseInt(ms)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return {
+    id: task.id,
+    name: task.name,
+    siteId: '—',
+    siteName: '—',
+    organization: 'ClickUp',
+    scope: 'inspection',
+    status,
+    assignee: assigneeName,
+    scheduledDate: task.due_date ? fmtDate(task.due_date) : '—',
+    processed: status === 'completed',
+    processedBy: status === 'completed' ? assigneeName : undefined,
+  }
+}
+
+
+function ClickUpPMView() {
+  const [pmMode, setPmMode] = useState<'assign' | 'my_work'>('assign')
+  const [surveys, setSurveys]           = useState<Survey[]>([])
+  const [siteVisits, setSiteVisits]     = useState<SiteVisit[]>([])
+  const [cuMembers, setCuMembers]       = useState<CUMember[]>([])
+  const [cuClosedStatus, setCuClosedStatus] = useState<string>('complete') // actual ClickUp done-status name
+  const [loading, setLoading]           = useState(false)
+  const [source, setSource]             = useState<'clickup' | 'mock' | null>(null)
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
+
+  // Fetch tasks + members + list statuses in parallel on mount
+  const fetchAll = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [sr, vr, mr, lr] = await Promise.all([
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}/tasks`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SITE_VISITS_LIST}/tasks`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}/members`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}`),
+      ])
+      const sd = await sr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
+      const vd = await vr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
+      const md = await mr.json() as { members: CUMember[]; source: 'clickup' | 'mock' }
+      const ld = await lr.json() as { statuses?: CUStatus[]; source: 'clickup' | 'mock' }
+      setSurveys((sd.tasks ?? []).map(cuTaskToSurvey))
+      setSiteVisits((vd.tasks ?? []).map(cuTaskToSiteVisit))
+      setCuMembers(md.members ?? [])
+      // Find the workspace's actual "done" status (type === 'closed')
+      const closedStatus = (ld.statuses ?? []).find(s => s.type === 'closed')
+      if (closedStatus) setCuClosedStatus(closedStatus.status)
+      setSource(sd.source)
+    } catch (e) { console.error('ClickUp fetch failed', e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  // onAssign: optimistic update + real-time write to ClickUp
+  const onAssign = useCallback((surveyId: string, assignee: string, dueDate: string | null) => {
+    // Optimistic local update
+    setSurveys(prev => prev.map(s =>
+      s.id === surveyId
+        ? { ...s, assignee, status: s.status === 'unassigned' ? 'pending' : s.status, ...(dueDate !== null ? { dueDate } : {}) }
+        : s
+    ))
+
+    // Build ClickUp PUT body
+    const body: Record<string, unknown> = {}
+
+    // Resolve new assignee's ClickUp user ID
+    const newMember = cuMembers.find(m => m.username === assignee)
+    if (newMember) {
+      // Find previous assignee to remove
+      const prevSurvey = surveys.find(s => s.id === surveyId)
+      const prevMember = prevSurvey?.assignee ? cuMembers.find(m => m.username === prevSurvey.assignee) : undefined
+      body.assignees = { add: [newMember.id], ...(prevMember ? { rem: [prevMember.id] } : {}) }
+    }
+
+    // Convert due date string to Unix ms for ClickUp
+    if (dueDate !== null) {
+      const ms = new Date(dueDate).getTime()
+      if (!isNaN(ms)) body.due_date = ms
+    }
+
+    if (Object.keys(body).length > 0) {
+      fetch(`${CU_API}/api/clickup/tasks/${surveyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(e => console.error('ClickUp write-back failed', e))
+    }
+  }, [cuMembers, surveys])
+
+  const onMarkCompleteCU = useCallback((id: string) => {
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    setSurveys(prev => prev.map(s => s.id === id ? { ...s, status: 'completed', progress: 100, completedDate: today } : s))
+    fetch(`${CU_API}/api/clickup/tasks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: cuClosedStatus }),
+    }).catch(e => console.error('ClickUp complete write-back failed', e))
+  }, [cuClosedStatus])
+
+  const onUpdateSurveyCU = useCallback((id: string, updates: Partial<Survey>) => {
+    setSurveys(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
+    const body: Record<string, unknown> = {}
+    if (updates.status) body.status = updates.status === 'completed' ? cuClosedStatus : updates.status.replace('_', ' ')
+    if (updates.dueDate) {
+      const ms = new Date(updates.dueDate).getTime()
+      if (!isNaN(ms)) body.due_date = ms
+    }
+    if (Object.keys(body).length > 0) {
+      fetch(`${CU_API}/api/clickup/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(e => console.error('ClickUp update write-back failed', e))
+    }
+  }, [cuClosedStatus])
+
+  const selectedCUSurvey = selectedSurveyId ? surveys.find(s => s.id === selectedSurveyId) ?? null : null
+
+  const myWork = surveys.filter(s => s.assignee === CU_PM_NAME)
+  const myActiveCount = myWork.filter(s => s.status !== 'completed').length
+  const displaySurveys = pmMode === 'my_work' ? myWork : surveys
+
+  // Connection banner — tiny, above mode switcher
+  const banner = source ? (
+    <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg w-fit border mb-4 ${
+      source === 'clickup'
+        ? 'bg-green-500/8 border-green-500/20 text-green-400'
+        : 'bg-violet-400/8 border-violet-400/20 text-violet-400'
+    }`}>
+      {source === 'clickup'
+        ? <><CheckCircle2 size={11} /> Live from ClickUp</>
+        : <><Wifi size={11} /> Demo mode — add CLICKUP_API_KEY to .env</>}
+    </div>
+  ) : null
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-text-muted text-sm gap-2">
+        <RefreshCw size={14} className="animate-spin" /> Loading from ClickUp…
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      {selectedCUSurvey && (
+        <SurveyDetailPage
+          survey={selectedCUSurvey}
+          onClose={() => setSelectedSurveyId(null)}
+          onMarkComplete={onMarkCompleteCU}
+          onUpdate={onUpdateSurveyCU}
+        />
+      )}
+
+      {banner}
+
+      {/* Same mode switcher as PMView */}
+      <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setPmMode('assign')}
+          className={['flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+            pmMode === 'assign' ? 'bg-accent text-white shadow-sm' : 'text-text-secondary hover:text-text-primary',
+          ].join(' ')}
+        >
+          <Users size={14} />
+          Assign Work
+        </button>
+        <button
+          onClick={() => setPmMode('my_work')}
+          className={['flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+            pmMode === 'my_work' ? 'bg-accent text-white shadow-sm' : 'text-text-secondary hover:text-text-primary',
+          ].join(' ')}
+        >
+          <UserCheck size={14} />
+          My Work
+          {myActiveCount > 0 && (
+            <span className={['text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none',
+              pmMode === 'my_work' ? 'bg-white/20 text-white' : 'bg-accent/15 text-accent',
+            ].join(' ')}>
+              {myActiveCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Same DashboardTabs — surveys + site visits from ClickUp, scans/sites from local */}
+      <DashboardTabs
+        surveys={displaySurveys}
+        scans={ORG_SCANS}
+        siteVisits={siteVisits}
+        sites={ORG_SITES}
+        customSurveysContent={
+          pmMode === 'assign'
+            ? <PMSurveysContent surveys={surveys} onAssign={onAssign} cuMembers={cuMembers} onSelectSurvey={setSelectedSurveyId} />
+            : undefined
+        }
+        onSelectSurvey={setSelectedSurveyId}
+        showOrgColumn={false}
+      />
+    </div>
+  )
+}
+
+// ─── ClickUp Technician View (Matt Edrich) ──────────────────────────────────
+
+function ClickUpTechView() {
+  const [surveys, setSurveys]           = useState<Survey[]>([])
+  const [siteVisits, setSiteVisits]     = useState<SiteVisit[]>([])
+  const [cuClosedStatus, setCuClosedStatus] = useState<string>('complete')
+  const [loading, setLoading]           = useState(false)
+  const [source, setSource]             = useState<'clickup' | 'mock' | null>(null)
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
+  const { config, addMetric, removeMetric, resetContext } = useKpiConfig('clickup_technician', { surveys: [], scans: [], site_visits: [], sites: [] })
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [sr, vr, lr] = await Promise.all([
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}/tasks`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SITE_VISITS_LIST}/tasks`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}`),
+      ])
+      const sd = await sr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
+      const vd = await vr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
+      const ld = await lr.json() as { statuses?: CUStatus[]; source: 'clickup' | 'mock' }
+      setSurveys((sd.tasks ?? []).map(cuTaskToSurvey))
+      setSiteVisits((vd.tasks ?? []).map(cuTaskToSiteVisit))
+      const closedStatus = (ld.statuses ?? []).find(s => s.type === 'closed')
+      if (closedStatus) setCuClosedStatus(closedStatus.status)
+      setSource(sd.source)
+    } catch (e) { console.error('ClickUp fetch failed', e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  const onMarkComplete = useCallback((id: string) => {
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    setSurveys(prev => prev.map(s => s.id === id ? { ...s, status: 'completed', progress: 100, completedDate: today } : s))
+    fetch(`${CU_API}/api/clickup/tasks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: cuClosedStatus }),
+    }).catch(e => console.error('ClickUp complete write-back failed', e))
+  }, [cuClosedStatus])
+
+  const onUpdate = useCallback((id: string, updates: Partial<Survey>) => {
+    setSurveys(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
+    const body: Record<string, unknown> = {}
+    if (updates.status) body.status = updates.status === 'completed' ? cuClosedStatus : updates.status.replace('_', ' ')
+    if (updates.dueDate) {
+      const ms = new Date(updates.dueDate).getTime()
+      if (!isNaN(ms)) body.due_date = ms
+    }
+    if (Object.keys(body).length > 0) {
+      fetch(`${CU_API}/api/clickup/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(e => console.error('ClickUp update write-back failed', e))
+    }
+  }, [cuClosedStatus])
+
+  // Filter to Matt's tasks only
+  const mySurveys    = surveys.filter(s => s.assignee === CU_TECH_NAME)
+  const mySiteVisits = siteVisits.filter(v => v.assignee === CU_TECH_NAME)
+  const data: KpiData = { surveys: mySurveys, scans: MATT_SCANS, siteVisits: mySiteVisits, sites: MATT_SITES }
+
+  const kpiSection = (ctx: KpiContext, registry: MetricDef[]) => (
+    <KpiSection
+      variant="tab"
+      context={ctx}
+      metrics={registry}
+      activeIds={config[ctx]}
+      data={data}
+      onAdd={id => addMetric(ctx, id)}
+      onRemove={id => removeMetric(ctx, id)}
+      onReset={() => resetContext(ctx)}
+    />
+  )
+
+  const selectedSurvey = selectedSurveyId ? mySurveys.find(s => s.id === selectedSurveyId) ?? null : null
+
+  const banner = source ? (
+    <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg w-fit border mb-4 ${
+      source === 'clickup'
+        ? 'bg-green-500/8 border-green-500/20 text-green-400'
+        : 'bg-violet-400/8 border-violet-400/20 text-violet-400'
+    }`}>
+      {source === 'clickup'
+        ? <><CheckCircle2 size={11} /> Live from ClickUp</>
+        : <><Wifi size={11} /> Demo mode — add CLICKUP_API_KEY to .env</>}
+    </div>
+  ) : null
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-text-muted text-sm gap-2">
+        <RefreshCw size={14} className="animate-spin" /> Loading from ClickUp…
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      {selectedSurvey && (
+        <SurveyDetailPage
+          survey={selectedSurvey}
+          onClose={() => setSelectedSurveyId(null)}
+          onMarkComplete={onMarkComplete}
+          onUpdate={onUpdate}
+        />
+      )}
+      {banner}
+      <DashboardTabs
+        surveys={mySurveys}
+        scans={MATT_SCANS}
+        siteVisits={mySiteVisits}
+        sites={MATT_SITES}
+        customSurveysContent={<TechSurveysContent surveys={mySurveys} onSelectSurvey={setSelectedSurveyId} />}
+        tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
+        showOrgColumn={false}
+        onSelectSurvey={setSelectedSurveyId}
+      />
+    </div>
+  )
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 const ROLE_META = {
@@ -2370,11 +2909,13 @@ const ROLE_META = {
   pm:              { subtitle: 'Manage survey assignments and track QC technician progress across your organizations.' },
   qc_technician:   { subtitle: 'Your assigned surveys, progress, and completed inspection history.' },
   qc_technician_2: { subtitle: 'Your assigned surveys, progress, and completed inspection history.' },
+  clickup_pm:          { subtitle: 'Live task view sourced directly from ClickUp — surveys and site visits.' },
+  clickup_technician:  { subtitle: 'Your assigned surveys and site visits, live from ClickUp.' },
 }
 
 const QADashboard: React.FC = () => {
   const { role } = useRole()
-  const { subtitle } = ROLE_META[role]
+  const { subtitle } = ROLE_META[role] ?? ROLE_META['pm']
   const isAdmin = role === 'admin'
   const [orgFilter, setOrgFilter] = useState<string>(isAdmin ? 'all' : (ROLE_ORGS[role]?.[0] ?? 'all'))
   const [surveys, setSurveys] = useState<Survey[]>(ALL_SURVEYS)
@@ -2413,6 +2954,10 @@ const QADashboard: React.FC = () => {
     ))
   }
 
+  const onUpdateSurvey = (id: string, updates: Partial<Survey>) => {
+    setSurveys(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
+  }
+
   const viewProps = { orgFilter, surveys, onAssign: assignSurvey, onSelectSurvey: setSelectedSurveyId }
 
   const selectedSurvey = selectedSurveyId ? surveys.find(s => s.id === selectedSurveyId) ?? null : null
@@ -2424,6 +2969,7 @@ const QADashboard: React.FC = () => {
           survey={selectedSurvey}
           onClose={() => setSelectedSurveyId(null)}
           onMarkComplete={onMarkComplete}
+          onUpdate={onUpdateSurvey}
         />
       )}
       <ToastStack toasts={toasts} />
@@ -2439,12 +2985,14 @@ const QADashboard: React.FC = () => {
           </div>
         </div>
 
-        <OrgSwitcher
-          orgs={availableOrgs}
-          value={orgFilter}
-          onChange={setOrgFilter}
-          allowAll={isAdmin}
-        />
+        {role !== 'clickup_pm' && role !== 'clickup_technician' && (
+          <OrgSwitcher
+            orgs={availableOrgs}
+            value={orgFilter}
+            onChange={setOrgFilter}
+            allowAll={isAdmin}
+          />
+        )}
       </div>
 
       {role === 'admin'           && <AdminView       {...viewProps} />}
@@ -2452,6 +3000,8 @@ const QADashboard: React.FC = () => {
       {role === 'pm'              && <PMView           {...viewProps} />}
       {role === 'qc_technician'   && <TechnicianView  {...viewProps} />}
       {role === 'qc_technician_2' && <QcTech2View     {...viewProps} />}
+      {role === 'clickup_pm'          && <ClickUpPMView />}
+      {role === 'clickup_technician'  && <ClickUpTechView />}
     </div>
   )
 }

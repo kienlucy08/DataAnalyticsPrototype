@@ -17,12 +17,32 @@ const ROLE_LABELS: Record<string, { title: string; description: string }> = {
     title: 'Technician Dashboard',
     description: 'Assigned work, inspection results, and field activity summary.',
   },
+  org_owner: {
+    title: 'Org Owner Dashboard',
+    description: 'Survey health, completion rates, and operational status across your organizations.',
+  },
+  qc_technician: {
+    title: 'Technician Dashboard',
+    description: 'Assigned work, inspection results, and field activity summary.',
+  },
+  qc_technician_2: {
+    title: 'Technician Dashboard',
+    description: 'Assigned work, inspection results, and field activity summary.',
+  },
+  clickup_pm: {
+    title: 'Project Manager Dashboard',
+    description: 'Project status, site progress, and scheduling analytics.',
+  },
+  clickup_technician: {
+    title: 'Technician Dashboard',
+    description: 'Assigned work, inspection results, and field activity summary.',
+  },
 }
 
 const PowerBIDashboardPage: React.FC = () => {
   const { role } = useRole()
   const config = PBI_CONFIGS[role]
-  const { title, description } = ROLE_LABELS[role]
+  const { title, description } = ROLE_LABELS[role] ?? ROLE_LABELS['pm']
 
   return (
     <div className="max-w-7xl mx-auto w-full">
