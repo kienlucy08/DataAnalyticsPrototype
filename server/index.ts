@@ -362,6 +362,31 @@ app.put('/api/clickup/tasks/:taskId', async (req, res) => {
   }
 })
 
+// POST /api/clickup/lists/:listId/task — create a new task in a list
+app.post('/api/clickup/lists/:listId/task', async (req, res) => {
+  const { listId } = req.params
+  const headers = clickupHeaders()
+  const body = req.body as Record<string, unknown>
+
+  if (!headers) {
+    // Mock: return a fake created task
+    res.json({ id: `mock_${Date.now()}`, name: body.name, status: body.status ?? 'scheduled', source: 'mock' })
+    return
+  }
+  try {
+    const response = await fetch(`${CLICKUP_BASE}/list/${listId}/task`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    })
+    const data = await response.json() as { err?: string }
+    if (data.err) { res.status(400).json({ error: data.err }); return }
+    res.json({ ...data, source: 'clickup' })
+  } catch (err) {
+    res.status(500).json({ error: errMsg(err) })
+  }
+})
+
 app.listen(port, () => {
   console.log(`[Server] MCP bridge running on http://localhost:${port}`)
 })

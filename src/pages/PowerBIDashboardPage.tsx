@@ -29,6 +29,14 @@ const ROLE_LABELS: Record<string, { title: string; description: string }> = {
     title: 'Technician Dashboard',
     description: 'Assigned work, inspection results, and field activity summary.',
   },
+  clickup_admin: {
+    title: 'Admin Dashboard',
+    description: 'Organization-wide metrics, team performance, and operational overview.',
+  },
+  clickup_org_owner: {
+    title: 'Org Owner Dashboard',
+    description: 'Survey health, completion rates, and operational status across your organizations.',
+  },
   clickup_pm: {
     title: 'Project Manager Dashboard',
     description: 'Project status, site progress, and scheduling analytics.',

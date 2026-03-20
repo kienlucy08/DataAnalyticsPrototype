@@ -3,7 +3,7 @@ import {
   ClipboardCheck, Clock, CheckCircle2, AlertCircle, TrendingUp,
   ChevronDown, ChevronRight, Search, MoreHorizontal, XCircle,
   UserCheck, Users, Lock, Pencil, Plus, X, Building2, MapPin,
-  RefreshCw, Wifi,
+  RefreshCw, Wifi, Trash2,
 } from 'lucide-react'
 import { useRole } from '../context/RoleContext'
 import { useDashboard } from '../context/DashboardContext'
@@ -41,6 +41,7 @@ interface Survey {
   status: SurveyStatus
   assignee?: string
   progress?: number
+  siteVisitId?: string
   createdDate: string
   completedDate?: string
   dueDate?: string
@@ -67,7 +68,7 @@ interface SiteVisit {
   organization: string
   scope: SurveyScope
   status: VisitStatus
-  assignee: string
+  assignee?: string
   scheduledDate: string
   processed: boolean
   processingDate?: string
@@ -88,14 +89,14 @@ interface SiteData {
 // ─── Fake data ─────────────────────────────────────────────────────────────
 
 const ALL_SURVEYS: Survey[] = [
-  { id: 'SV-1042', name: 'Compound Inspection [QA]',     siteId: '11046',      siteName: 'Garden City',      organization: 'FieldSync Org', scope: 'inspection', status: 'in_progress', assignee: 'Matt Edrich', progress: 60,  createdDate: 'Oct 14, 2025',  dueDate: 'Nov 1, 2025',  priority: 'high' },
-  { id: 'SV-1043', name: 'TEST Light System COP',        siteId: '3667',       siteName: "Danny's Haus",     organization: 'FieldSync Org', scope: 'cop',        status: 'in_progress', assignee: 'Matt Edrich', progress: 30,  createdDate: 'Feb 9, 2026',   dueDate: 'Mar 1, 2026' },
-  { id: 'SV-1044', name: 'Job Safety Analysis',          siteId: 'SA-001',     siteName: 'Safety Site A',    organization: 'Test Org',      scope: 'jsa',        status: 'completed',   assignee: 'Matt Edrich', progress: 100, createdDate: 'Oct 22, 2025',  completedDate: 'Nov 15, 2025' },
+  { id: 'SV-1042', name: 'Compound Inspection [QA]',     siteId: '11046',      siteName: 'Garden City',      organization: 'FieldSync Org', scope: 'inspection', status: 'in_progress', assignee: 'Mike McGuire', progress: 60,  createdDate: 'Oct 14, 2025',  dueDate: 'Nov 1, 2025',  priority: 'high' },
+  { id: 'SV-1043', name: 'TEST Light System COP',        siteId: '3667',       siteName: "Danny's Haus",     organization: 'FieldSync Org', scope: 'cop',        status: 'in_progress', assignee: 'Mike McGuire', progress: 30,  createdDate: 'Feb 9, 2026',   dueDate: 'Mar 1, 2026' },
+  { id: 'SV-1044', name: 'Job Safety Analysis',          siteId: 'SA-001',     siteName: 'Safety Site A',    organization: 'Test Org',      scope: 'jsa',        status: 'completed',   assignee: 'Mike McGuire', progress: 100, createdDate: 'Oct 22, 2025',  completedDate: 'Nov 15, 2025' },
   { id: 'SV-1045', name: 'Guy Facilities Inspection',    siteId: 'T0B1105',    siteName: 'Hiawatha',         organization: 'Test Org',      scope: 'facilities', status: 'pending',     assignee: 'John Smith',  progress: 0,   createdDate: 'Dec 22, 2025',  dueDate: 'Jan 10, 2026', priority: 'high' },
   { id: 'SV-1046', name: 'TEST Safety Climb COP',        siteId: 'SA-safety',  siteName: 'Safety',           organization: 'Test Org',      scope: 'cop',        status: 'overdue',     assignee: 'John Smith',  progress: 45,  createdDate: 'Oct 21, 2025',  dueDate: 'Nov 30, 2025', priority: 'high' },
   { id: 'SV-1047', name: 'Annual Tower Inspection',      siteId: 'MN-1055',    siteName: 'Duluth 1',         organization: 'Test Org',      scope: 'inspection', status: 'unassigned',  progress: 0,   createdDate: 'Sep 23, 2025',  dueDate: 'Mar 15, 2026', priority: 'high' },
   { id: 'SV-1048', name: 'Compound Inspection',          siteId: 'Mango123',   siteName: 'Mango Site',       organization: 'Test Org',      scope: 'inspection', status: 'in_progress', assignee: 'John Smith',  progress: 55,  createdDate: 'Jan 20, 2026',  dueDate: 'Feb 28, 2026' },
-  { id: 'SV-1049', name: 'RF Equipment Survey',          siteId: 'GA-01',      siteName: 'Glen Arbor',       organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Matt Edrich', progress: 100, createdDate: 'Jan 16, 2026',  completedDate: 'Feb 10, 2026' },
+  { id: 'SV-1049', name: 'RF Equipment Survey',          siteId: 'GA-01',      siteName: 'Glen Arbor',       organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Mike McGuire', progress: 100, createdDate: 'Jan 16, 2026',  completedDate: 'Feb 10, 2026' },
   { id: 'SV-1050', name: 'Tower Structural Inspection',  siteId: 'UMT-II',     siteName: 'UMT II',           organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'John Smith',  progress: 100, createdDate: 'Aug 6, 2025',   completedDate: 'Sep 1, 2025' },
   { id: 'SV-1051', name: 'CONS-MOD 48 Hour Turnaround', siteId: 'Mango123',   siteName: 'Mango Site',       organization: 'Test Org',      scope: 'other',      status: 'pending',     assignee: 'John Smith',  progress: 0,   createdDate: 'Jan 20, 2026',  dueDate: 'Feb 1, 2026',  priority: 'low' },
   { id: 'SV-1052', name: 'Grounding Survey',             siteId: 'GA-02',      siteName: 'Glen Arbor North', organization: 'FieldSync Org', scope: 'inspection', status: 'unassigned',  progress: 0,   createdDate: 'Feb 15, 2026',  dueDate: 'Mar 20, 2026' },
@@ -103,26 +104,26 @@ const ALL_SURVEYS: Survey[] = [
   { id: 'SV-1054', name: 'Compound Inspection [QA]',     siteId: 'SO-445',     siteName: 'Central Tower',    organization: 'SomeOrg',       scope: 'inspection', status: 'in_progress', assignee: 'Mike Torres', progress: 70,  createdDate: 'Dec 1, 2025',   dueDate: 'Jan 15, 2026' },
   { id: 'SV-1055', name: 'Annual Tower Inspection',      siteId: 'SO-210',     siteName: 'Westside Hub',     organization: 'SomeOrg',       scope: 'inspection', status: 'overdue',     assignee: 'Lisa Park',   progress: 20,  createdDate: 'Nov 10, 2025',  dueDate: 'Dec 31, 2025' },
   { id: 'SV-1056', name: 'TEST Light System COP',        siteId: 'UMT-III',    siteName: 'UMT III',          organization: 'FieldSync Org', scope: 'cop',        status: 'unassigned',  progress: 0,   createdDate: 'Feb 20, 2026',  dueDate: 'Apr 1, 2026',  priority: 'low' },
-  { id: 'SV-1057', name: 'Guy Facilities Inspection v2', siteId: 'T0B1105',    siteName: 'Hiawatha',         organization: 'Test Org',      scope: 'facilities', status: 'completed',   assignee: 'Matt Edrich', progress: 100, createdDate: 'Dec 22, 2025',  completedDate: 'Jan 28, 2026' },
+  { id: 'SV-1057', name: 'Guy Facilities Inspection v2', siteId: 'T0B1105',    siteName: 'Hiawatha',         organization: 'Test Org',      scope: 'facilities', status: 'completed',   assignee: 'Mike McGuire', progress: 100, createdDate: 'Dec 22, 2025',  completedDate: 'Jan 28, 2026' },
   { id: 'SV-1058', name: 'Grounding Survey',             siteId: 'MN-1055',    siteName: 'Duluth 1',         organization: 'Test Org',      scope: 'inspection', status: 'completed',   assignee: 'John Smith',  progress: 100, createdDate: 'Nov 5, 2025',   completedDate: 'Dec 10, 2025' },
   { id: 'SV-1059', name: 'RF Equipment Survey',          siteId: 'SO-100',     siteName: 'Metro Site',       organization: 'SomeOrg',       scope: 'inspection', status: 'pending',     assignee: 'Lisa Park',   progress: 0,   createdDate: 'Feb 25, 2026',  dueDate: 'Mar 30, 2026' },
-  { id: 'SV-1060', name: 'Annual Tower Inspection',      siteId: 'GA-02',      siteName: 'Glen Arbor North', organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Matt Edrich', progress: 100, createdDate: 'Jan 1, 2026',   completedDate: 'Jan 30, 2026' },
+  { id: 'SV-1060', name: 'Annual Tower Inspection',      siteId: 'GA-02',      siteName: 'Glen Arbor North', organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Mike McGuire', progress: 100, createdDate: 'Jan 1, 2026',   completedDate: 'Jan 30, 2026' },
   { id: 'SV-1061', name: 'Grounding Survey',             siteId: 'SA-safety',  siteName: 'Safety',           organization: 'Test Org',      scope: 'inspection', status: 'completed',   assignee: 'John Smith',  progress: 100, createdDate: 'Aug 15, 2025',  completedDate: 'Sep 5, 2025' },
-  { id: 'SV-1062', name: 'TEST Light System COP',        siteId: 'GA-01',      siteName: 'Glen Arbor',       organization: 'FieldSync Org', scope: 'cop',        status: 'completed',   assignee: 'Matt Edrich', progress: 100, createdDate: 'Dec 10, 2025',  completedDate: 'Jan 5, 2026' },
+  { id: 'SV-1062', name: 'TEST Light System COP',        siteId: 'GA-01',      siteName: 'Glen Arbor',       organization: 'FieldSync Org', scope: 'cop',        status: 'completed',   assignee: 'Mike McGuire', progress: 100, createdDate: 'Dec 10, 2025',  completedDate: 'Jan 5, 2026' },
   { id: 'SV-1063', name: 'Compound Inspection [QA]',     siteId: 'UMT-III',    siteName: 'UMT III',          organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'John Smith',  progress: 100, createdDate: 'Nov 15, 2025',  completedDate: 'Dec 20, 2025' },
-  { id: 'SV-1064', name: 'Job Safety Analysis',          siteId: 'Mango123',   siteName: 'Mango Site',       organization: 'Test Org',      scope: 'jsa',        status: 'completed',   assignee: 'Matt Edrich', progress: 100, createdDate: 'Sep 10, 2025',  completedDate: 'Oct 1, 2025' },
+  { id: 'SV-1064', name: 'Job Safety Analysis',          siteId: 'Mango123',   siteName: 'Mango Site',       organization: 'Test Org',      scope: 'jsa',        status: 'completed',   assignee: 'Mike McGuire', progress: 100, createdDate: 'Sep 10, 2025',  completedDate: 'Oct 1, 2025' },
   { id: 'SV-1065', name: 'Annual Tower Inspection',      siteId: 'SO-445',     siteName: 'Central Tower',    organization: 'SomeOrg',       scope: 'inspection', status: 'completed',   assignee: 'Mike Torres', progress: 100, createdDate: 'Sep 20, 2025',  completedDate: 'Oct 15, 2025' },
-  { id: 'SV-1066', name: 'RF Equipment Survey',          siteId: 'MN-1055',    siteName: 'Duluth 1',         organization: 'Test Org',      scope: 'inspection', status: 'pending',     assignee: 'Matt Edrich', progress: 0,   createdDate: 'Feb 25, 2026',  dueDate: 'Mar 25, 2026' },
+  { id: 'SV-1066', name: 'RF Equipment Survey',          siteId: 'MN-1055',    siteName: 'Duluth 1',         organization: 'Test Org',      scope: 'inspection', status: 'pending',     assignee: 'Mike McGuire', progress: 0,   createdDate: 'Feb 25, 2026',  dueDate: 'Mar 25, 2026' },
 ]
 
 const SCANS: Scan[] = [
-  { id: 'SC-201', name: 'GardenCity-Scan - Oct 18, 2025 - 2:30 PM',      siteVisit: 'Q4 2025 Inspection',     siteId: '11046',     siteName: 'Garden City',      organization: 'FieldSync Org', files: 14, technician: 'Matt Edrich', createdDate: 'Oct 18, 2025' },
-  { id: 'SC-202', name: 'DannysHaus-COP - Feb 12, 2026 - 9:15 AM',       siteVisit: 'Feb 2026 COP Visit',     siteId: '3667',      siteName: "Danny's Haus",     organization: 'FieldSync Org', files: 8,  technician: 'Matt Edrich', createdDate: 'Feb 12, 2026' },
-  { id: 'SC-203', name: 'SafetySiteA-JSA - Nov 10, 2025 - 11:00 AM',     siteVisit: 'Safety Audit',           siteId: 'SA-001',    siteName: 'Safety Site A',    organization: 'Test Org',      files: 6,  technician: 'Matt Edrich', createdDate: 'Nov 10, 2025' },
-  { id: 'SC-204', name: 'GlenArbor-RF - Jan 20, 2026 - 3:45 PM',         siteVisit: 'Glen Arbor RF Check',    siteId: 'GA-01',     siteName: 'Glen Arbor',       organization: 'FieldSync Org', files: 22, technician: 'Matt Edrich', createdDate: 'Jan 20, 2026' },
-  { id: 'SC-205', name: 'Hiawatha-Facilities - Jan 5, 2026 - 10:20 AM',                                       siteId: 'T0B1105',   siteName: 'Hiawatha',         organization: 'Test Org',      files: 11, technician: 'Matt Edrich', createdDate: 'Jan 5, 2026' },
-  { id: 'SC-206', name: 'GlenArborN-Annual - Jan 28, 2026 - 1:00 PM',    siteVisit: 'Glen Arbor North Survey', siteId: 'GA-02',    siteName: 'Glen Arbor North', organization: 'FieldSync Org', files: 9,  technician: 'Matt Edrich', createdDate: 'Jan 28, 2026' },
-  { id: 'SC-207', name: 'GlenArbor-COP - Jan 5, 2026 - 8:30 AM',                                             siteId: 'GA-01',     siteName: 'Glen Arbor',       organization: 'FieldSync Org', files: 7,  technician: 'Matt Edrich', createdDate: 'Jan 5, 2026' },
+  { id: 'SC-201', name: 'GardenCity-Scan - Oct 18, 2025 - 2:30 PM',      siteVisit: 'Q4 2025 Inspection',     siteId: '11046',     siteName: 'Garden City',      organization: 'FieldSync Org', files: 14, technician: 'Mike McGuire', createdDate: 'Oct 18, 2025' },
+  { id: 'SC-202', name: 'DannysHaus-COP - Feb 12, 2026 - 9:15 AM',       siteVisit: 'Feb 2026 COP Visit',     siteId: '3667',      siteName: "Danny's Haus",     organization: 'FieldSync Org', files: 8,  technician: 'Mike McGuire', createdDate: 'Feb 12, 2026' },
+  { id: 'SC-203', name: 'SafetySiteA-JSA - Nov 10, 2025 - 11:00 AM',     siteVisit: 'Safety Audit',           siteId: 'SA-001',    siteName: 'Safety Site A',    organization: 'Test Org',      files: 6,  technician: 'Mike McGuire', createdDate: 'Nov 10, 2025' },
+  { id: 'SC-204', name: 'GlenArbor-RF - Jan 20, 2026 - 3:45 PM',         siteVisit: 'Glen Arbor RF Check',    siteId: 'GA-01',     siteName: 'Glen Arbor',       organization: 'FieldSync Org', files: 22, technician: 'Mike McGuire', createdDate: 'Jan 20, 2026' },
+  { id: 'SC-205', name: 'Hiawatha-Facilities - Jan 5, 2026 - 10:20 AM',                                       siteId: 'T0B1105',   siteName: 'Hiawatha',         organization: 'Test Org',      files: 11, technician: 'Mike McGuire', createdDate: 'Jan 5, 2026' },
+  { id: 'SC-206', name: 'GlenArborN-Annual - Jan 28, 2026 - 1:00 PM',    siteVisit: 'Glen Arbor North Survey', siteId: 'GA-02',    siteName: 'Glen Arbor North', organization: 'FieldSync Org', files: 9,  technician: 'Mike McGuire', createdDate: 'Jan 28, 2026' },
+  { id: 'SC-207', name: 'GlenArbor-COP - Jan 5, 2026 - 8:30 AM',                                             siteId: 'GA-01',     siteName: 'Glen Arbor',       organization: 'FieldSync Org', files: 7,  technician: 'Mike McGuire', createdDate: 'Jan 5, 2026' },
   { id: 'SC-208', name: 'Safety-ClimbCOP - Oct 28, 2025 - 4:00 PM',      siteVisit: 'Safety Climb Review',    siteId: 'SA-safety', siteName: 'Safety',           organization: 'Test Org',      files: 9,  technician: 'John Smith',  createdDate: 'Oct 28, 2025' },
   { id: 'SC-209', name: 'MangoSite-Compound - Jan 25, 2026 - 2:15 PM',                                        siteId: 'Mango123',  siteName: 'Mango Site',       organization: 'Test Org',      files: 17, technician: 'John Smith',  createdDate: 'Jan 25, 2026' },
   { id: 'SC-210', name: 'UMT-II-Structural - Aug 15, 2025 - 9:00 AM',    siteVisit: 'UMT Structural Visit',   siteId: 'UMT-II',    siteName: 'UMT II',           organization: 'FieldSync Org', files: 31, technician: 'John Smith',  createdDate: 'Aug 15, 2025' },
@@ -134,15 +135,15 @@ const SCANS: Scan[] = [
 ]
 
 const SITE_VISITS: SiteVisit[] = [
-  { id: 'SV-V001', name: 'Q4 2025 Inspection',      siteId: '11046',     siteName: 'Garden City',      organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Matt Edrich', scheduledDate: 'Oct 14, 2025', processed: true,  processingDate: 'Nov 2, 2025',   processedBy: 'Lucy Kien' },
-  { id: 'SV-V002', name: 'Feb 2026 COP Visit',      siteId: '3667',      siteName: "Danny's Haus",     organization: 'FieldSync Org', scope: 'cop',        status: 'in_progress', assignee: 'Matt Edrich', scheduledDate: 'Feb 9, 2026',  processed: false },
-  { id: 'SV-V003', name: 'Safety Audit',             siteId: 'SA-001',    siteName: 'Safety Site A',    organization: 'Test Org',      scope: 'jsa',        status: 'completed',   assignee: 'Matt Edrich', scheduledDate: 'Oct 22, 2025', processed: true,  processingDate: 'Nov 20, 2025',  processedBy: 'Sara Connor' },
+  { id: 'SV-V001', name: 'Q4 2025 Inspection',      siteId: '11046',     siteName: 'Garden City',      organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Mike McGuire', scheduledDate: 'Oct 14, 2025', processed: true,  processingDate: 'Nov 2, 2025',   processedBy: 'Lucy Kien' },
+  { id: 'SV-V002', name: 'Feb 2026 COP Visit',      siteId: '3667',      siteName: "Danny's Haus",     organization: 'FieldSync Org', scope: 'cop',        status: 'in_progress', assignee: 'Mike McGuire', scheduledDate: 'Feb 9, 2026',  processed: false },
+  { id: 'SV-V003', name: 'Safety Audit',             siteId: 'SA-001',    siteName: 'Safety Site A',    organization: 'Test Org',      scope: 'jsa',        status: 'completed',   assignee: 'Mike McGuire', scheduledDate: 'Oct 22, 2025', processed: true,  processingDate: 'Nov 20, 2025',  processedBy: 'Sara Connor' },
   { id: 'SV-V004', name: 'Annual Structural Check',  siteId: 'T0B1105',   siteName: 'Hiawatha',         organization: 'Test Org',      scope: 'inspection', status: 'scheduled',   assignee: 'John Smith',  scheduledDate: 'Dec 22, 2025', processed: false },
   { id: 'SV-V005', name: 'Safety Climb Review',      siteId: 'SA-safety', siteName: 'Safety',           organization: 'Test Org',      scope: 'cop',        status: 'in_progress', assignee: 'John Smith',  scheduledDate: 'Oct 21, 2025', processed: false },
   { id: 'SV-V006', name: 'Q1 2026 Tower Survey',     siteId: 'MN-1055',   siteName: 'Duluth 1',         organization: 'Test Org',      scope: 'inspection', status: 'scheduled',   assignee: 'TBD',         scheduledDate: 'Mar 15, 2026', processed: false },
-  { id: 'SV-V007', name: 'Glen Arbor RF Check',      siteId: 'GA-01',     siteName: 'Glen Arbor',       organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Matt Edrich', scheduledDate: 'Jan 16, 2026', processed: true,  processingDate: 'Feb 5, 2026',   processedBy: 'Lucy Kien' },
+  { id: 'SV-V007', name: 'Glen Arbor RF Check',      siteId: 'GA-01',     siteName: 'Glen Arbor',       organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Mike McGuire', scheduledDate: 'Jan 16, 2026', processed: true,  processingDate: 'Feb 5, 2026',   processedBy: 'Lucy Kien' },
   { id: 'SV-V008', name: 'UMT Structural Visit',     siteId: 'UMT-II',    siteName: 'UMT II',           organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'John Smith',  scheduledDate: 'Aug 6, 2025',  processed: true,  processingDate: 'Sep 10, 2025',  processedBy: 'Sara Connor' },
-  { id: 'SV-V009', name: 'Glen Arbor North Survey',  siteId: 'GA-02',     siteName: 'Glen Arbor North', organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Matt Edrich', scheduledDate: 'Jan 30, 2026', processed: false },
+  { id: 'SV-V009', name: 'Glen Arbor North Survey',  siteId: 'GA-02',     siteName: 'Glen Arbor North', organization: 'FieldSync Org', scope: 'inspection', status: 'completed',   assignee: 'Mike McGuire', scheduledDate: 'Jan 30, 2026', processed: false },
   { id: 'SV-V010', name: 'Central Tower Audit',      siteId: 'SO-445',    siteName: 'Central Tower',    organization: 'SomeOrg',       scope: 'inspection', status: 'in_progress', assignee: 'Mike Torres', scheduledDate: 'Dec 1, 2025',  processed: false },
   { id: 'SV-V011', name: 'Westside Inspection',      siteId: 'SO-210',    siteName: 'Westside Hub',     organization: 'SomeOrg',       scope: 'inspection', status: 'cancelled',   assignee: 'Lisa Park',   scheduledDate: 'Nov 10, 2025', processed: false },
 ]
@@ -171,28 +172,30 @@ const ORG_FILTER = ['FieldSync Org', 'Test Org']
 // Orgs each role is permitted to see
 const ROLE_ORGS: Record<string, string[]> = {
   admin:           ['FieldSync Org', 'Test Org', 'SomeOrg'],
-  org_owner:       ['FieldSync Org', 'Test Org'],
+  org_owner:       ['FieldSync Org'],
   pm:              ['FieldSync Org', 'Test Org'],
   qc_technician:   ['FieldSync Org', 'Test Org'],
   qc_technician_2: ['FieldSync Org', 'Test Org'],
+  clickup_admin:       [],
+  clickup_org_owner:   [],
   clickup_pm:          [],
   clickup_technician:  [],
 }
 
 const ORG_SURVEYS     = ALL_SURVEYS.filter(s => ORG_FILTER.includes(s.organization))
-const MATT_SURVEYS    = ALL_SURVEYS.filter(s => s.assignee === 'Matt Edrich')
+const MIKE_SURVEYS    = ALL_SURVEYS.filter(s => s.assignee === 'Mike McGuire')
 const JOHN_SURVEYS    = ALL_SURVEYS.filter(s => s.assignee === 'John Smith')
 
 const ORG_SCANS       = SCANS.filter(s => ORG_FILTER.includes(s.organization))
-const MATT_SCANS      = SCANS.filter(s => s.technician === 'Matt Edrich')
+const MIKE_SCANS      = SCANS.filter(s => s.technician === 'Mike McGuire')
 const JOHN_SCANS      = SCANS.filter(s => s.technician === 'John Smith')
 
 const ORG_VISITS      = SITE_VISITS.filter(s => ORG_FILTER.includes(s.organization))
-const MATT_VISITS     = SITE_VISITS.filter(s => s.assignee === 'Matt Edrich')
+const MIKE_VISITS     = SITE_VISITS.filter(s => s.assignee === 'Mike McGuire')
 const JOHN_VISITS     = SITE_VISITS.filter(s => s.assignee === 'John Smith')
 
 const ORG_SITES       = ALL_SITES.filter(s => ORG_FILTER.includes(s.organization))
-const MATT_SITES      = ALL_SITES.filter(s => MATT_SURVEYS.some(sv => sv.siteId === s.siteId) || MATT_VISITS.some(v => v.siteId === s.siteId))
+const MIKE_SITES      = ALL_SITES.filter(s => MIKE_SURVEYS.some(sv => sv.siteId === s.siteId) || MIKE_VISITS.some(v => v.siteId === s.siteId))
 const JOHN_SITES      = ALL_SITES.filter(s => JOHN_SURVEYS.some(sv => sv.siteId === s.siteId) || JOHN_VISITS.some(v => v.siteId === s.siteId))
 
 // ─── Scope display labels ───────────────────────────────────────────────────
@@ -508,6 +511,219 @@ function KpiSection({ variant = 'default', metrics, activeIds, data, onAdd, onRe
   )
 }
 
+// ─── Add-to-Site-Visit Modal ────────────────────────────────────────────────
+
+interface SiteVisitModalSubmit {
+  existingVisitId?: string
+  newVisitName?: string
+  assignee?: string
+  dueDate?: string
+}
+
+function AddToSiteVisitModal({
+  surveys,
+  siteVisits,
+  onClose,
+  onSubmit,
+}: {
+  surveys: Survey[]
+  siteVisits: SiteVisit[]
+  onClose: () => void
+  onSubmit: (opts: SiteVisitModalSubmit) => void
+}) {
+  const primarySurvey = surveys[0]
+  const [search, setSearch]             = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [selectedId, setSelectedId]     = useState<string>('new')
+  const [assignee, setAssignee]         = useState('')
+  const [dueDate, setDueDate]           = useState('')
+  const dropdownRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!dropdownOpen) return
+    const handle = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [dropdownOpen])
+
+  const openVisits = siteVisits.filter(v => v.status !== 'completed' && v.status !== 'cancelled')
+  const filtered = openVisits.filter(v =>
+    v.name.toLowerCase().includes(search.toLowerCase()) ||
+    v.siteName.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const selectedLabel = selectedId === 'new'
+    ? 'Create new site visit'
+    : (openVisits.find(v => v.id === selectedId)?.name ?? 'Select a site visit')
+
+  const handleSelect = (id: string) => {
+    setSelectedId(id)
+    setSearch('')
+    setDropdownOpen(false)
+  }
+
+  const handleSubmit = () => {
+    if (selectedId === 'new') {
+      const visitName = surveys.length === 1
+        ? `${primarySurvey.siteName} Site Visit`
+        : `Multi-Site Visit (${surveys.length} surveys)`
+      onSubmit({
+        newVisitName: visitName,
+        assignee: assignee || undefined,
+        dueDate: dueDate || undefined,
+      })
+    } else {
+      onSubmit({
+        existingVisitId: selectedId,
+        assignee: assignee || undefined,
+        dueDate: dueDate || undefined,
+      })
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-text-primary text-base font-semibold">Add to Site Visit</h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors rounded-lg p-1">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Survey(s) being added */}
+          <div>
+            <p className="text-text-secondary text-xs mb-2">
+              {surveys.length === 1 ? 'Adding survey to site visit' : `Adding ${surveys.length} surveys to site visit`}
+            </p>
+            <div className="bg-surface border border-border rounded-lg px-3 py-2.5 space-y-1 max-h-32 overflow-y-auto">
+              {surveys.map(s => (
+                <div key={s.id} className={surveys.length > 1 ? 'border-b border-border/50 pb-1 last:border-0 last:pb-0' : ''}>
+                  <p className="text-text-primary text-sm font-medium">{s.siteName}</p>
+                  <p className="text-accent text-xs">{SCOPE_LABEL[s.scope]}, Site ID: {s.siteId}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Site visit dropdown */}
+          <div>
+            <p className="text-text-secondary text-xs mb-2">to this site visit:</p>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(v => !v)}
+                className="w-full flex items-center justify-between bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary hover:border-accent/50 transition-colors"
+              >
+                <span className={selectedId === 'new' ? 'text-text-muted' : 'text-text-primary'}>
+                  {selectedLabel}
+                </span>
+                <ChevronDown size={14} className={`text-text-muted shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-xl shadow-2xl z-10 overflow-hidden">
+                  {/* Search */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+                    <Search size={12} className="text-text-muted shrink-0" />
+                    <input
+                      autoFocus
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Search..."
+                      className="flex-1 bg-transparent text-xs text-text-primary placeholder-text-muted outline-none"
+                    />
+                  </div>
+                  {/* Create new option */}
+                  <button
+                    onClick={() => handleSelect('new')}
+                    className={[
+                      'w-full text-left px-3 py-2.5 text-sm transition-colors flex items-center gap-2',
+                      selectedId === 'new'
+                        ? 'bg-accent/10 text-accent'
+                        : 'text-text-primary hover:bg-surface',
+                    ].join(' ')}
+                  >
+                    <Plus size={13} className="shrink-0" />
+                    Create new site visit
+                  </button>
+                  {/* Existing visits */}
+                  <div className="max-h-48 overflow-y-auto">
+                    {filtered.map(v => (
+                      <button
+                        key={v.id}
+                        onClick={() => handleSelect(v.id)}
+                        className={[
+                          'w-full text-left px-3 py-2.5 text-xs transition-colors flex items-center gap-2',
+                          selectedId === v.id
+                            ? 'bg-accent/10 text-accent'
+                            : 'text-text-secondary hover:bg-surface hover:text-text-primary',
+                        ].join(' ')}
+                      >
+                        <MapPin size={11} className="shrink-0 text-text-muted" />
+                        <span className="truncate">{v.name}</span>
+                        <span className="ml-auto text-[10px] text-text-muted shrink-0">{v.siteName}</span>
+                      </button>
+                    ))}
+                    {filtered.length === 0 && search && (
+                      <p className="text-center text-text-muted text-xs py-3">No matches</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Optional: Assignee */}
+          <div>
+            <label className="text-text-secondary text-xs block mb-1.5">
+              Assign to <span className="text-text-muted">(optional)</span>
+            </label>
+            <input
+              value={assignee}
+              onChange={e => setAssignee(e.target.value)}
+              placeholder="e.g. Mike McGuire"
+              className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted outline-none focus:border-accent/50 transition-colors"
+            />
+          </div>
+
+          {/* Optional: Due date */}
+          <div>
+            <label className="text-text-secondary text-xs block mb-1.5">
+              Due date <span className="text-text-muted">(optional)</span>
+            </label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+              className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-accent/50 transition-colors [color-scheme:dark]"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="px-4 py-1.5 text-xs font-medium bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
+          >
+            {selectedId === 'new' ? 'Create Site Visit' : 'Add to Visit'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Org Switcher ───────────────────────────────────────────────────────────
 
 interface OrgSwitcherProps {
@@ -515,11 +731,12 @@ interface OrgSwitcherProps {
   value: string
   onChange: (org: string) => void
   allowAll?: boolean
+  allLabel?: string
 }
 
-function OrgSwitcher({ orgs, value, onChange, allowAll = false }: OrgSwitcherProps) {
+function OrgSwitcher({ orgs, value, onChange, allowAll = false, allLabel = 'All Organizations' }: OrgSwitcherProps) {
   const [open, setOpen] = useState(false)
-  const label = value === 'all' ? 'All Organizations' : value
+  const label = value === 'all' ? allLabel : value
 
   return (
     <div className="relative">
@@ -547,7 +764,7 @@ function OrgSwitcher({ orgs, value, onChange, allowAll = false }: OrgSwitcherPro
                 ].join(' ')}
               >
                 <Users size={13} className="shrink-0" />
-                <span>All Organizations</span>
+                <span>{allLabel}</span>
                 {value === 'all' && <span className="ml-auto text-accent">✓</span>}
               </button>
               <div className="border-t border-border mx-2 my-1" />
@@ -578,11 +795,27 @@ function OrgSwitcher({ orgs, value, onChange, allowAll = false }: OrgSwitcherPro
 }
 
 // Shared prop for org-aware role views
+const ROLE_PERSONA_NAME: Record<string, string> = {
+  admin:              'Lucy Kien',
+  org_owner:          'Sara Connor',
+  pm:                 'Susan Smith',
+  qc_technician:      'Mike McGuire',
+  qc_technician_2:    'John Smith',
+  clickup_admin:      'Pryce Valencia',
+  clickup_org_owner:  'Daniel Valencia',
+  clickup_pm:         'Lucy Kien',
+  clickup_technician: 'Mike McGuire',
+}
+
 interface RoleViewProps {
   orgFilter: string
   surveys: Survey[]
+  allSiteVisits: SiteVisit[]
   onAssign: (surveyId: string, assignee: string, dueDate: string | null) => void
   onSelectSurvey: (id: string) => void
+  onCreateSiteVisit: (surveys: Survey | Survey[]) => void
+  onDeleteSiteVisit: (visitId: string) => void
+  onTakeOnSiteVisit: (visitId: string) => void
 }
 
 // ─── Dashboard Tabs ─────────────────────────────────────────────────────────
@@ -608,6 +841,9 @@ interface DashboardTabsProps {
   showOrgColumn?: boolean
   onSelectSurvey?: (id: string) => void
   onAssign?: (survey: Survey) => void
+  onCreateSiteVisit?: (surveys: Survey | Survey[]) => void
+  onDeleteSiteVisit?: (visitId: string) => void
+  onTakeOnVisit?: (visitId: string) => void
 }
 
 function Checkbox({ checked, onClick }: { checked: boolean; onClick: () => void }) {
@@ -633,9 +869,16 @@ function ActionCell() {
   )
 }
 
-function SurveyActionMenu({ survey, onAssign }: { survey: Survey; onAssign?: (s: Survey) => void }) {
+function SurveyActionMenu({ survey, onAssign, onCreateSiteVisit, onSelectSurvey }: {
+  survey: Survey
+  onAssign?: (s: Survey) => void
+  onCreateSiteVisit?: (surveys: Survey | Survey[]) => void
+  onSelectSurvey?: (id: string) => void
+}) {
   const [open, setOpen] = useState(false)
   const ref = React.useRef<HTMLDivElement>(null)
+  const { role } = useRole()
+  const isTechnician = role === 'qc_technician' || role === 'qc_technician_2' || role === 'clickup_technician'
 
   React.useEffect(() => {
     if (!open) return
@@ -645,7 +888,7 @@ function SurveyActionMenu({ survey, onAssign }: { survey: Survey; onAssign?: (s:
   }, [open])
 
   const items = [
-    { icon: <ChevronRight size={13} />, label: 'View Survey',         action: () => {} },
+    { icon: <ChevronRight size={13} />, label: 'View Survey',         action: () => { onSelectSurvey?.(survey.id); setOpen(false) } },
     { icon: <ChevronRight size={13} />, label: 'Download JSON',       action: () => {} },
     { icon: <ChevronRight size={13} />, label: 'Create Image Export', action: () => {} },
   ]
@@ -685,6 +928,19 @@ function SurveyActionMenu({ survey, onAssign }: { survey: Survey; onAssign?: (s:
             </>
           )}
 
+          {onCreateSiteVisit && !isTechnician && (
+            <>
+              <div className="border-t border-border my-1" />
+              <button
+                onClick={() => { onCreateSiteVisit(survey); setOpen(false) }}
+                className="w-full text-left px-3 py-2 text-xs text-emerald-400 hover:bg-emerald-400/10 transition-colors flex items-center gap-2"
+              >
+                <Plus size={13} />
+                Add to Site Visit
+              </button>
+            </>
+          )}
+
           <div className="border-t border-border my-1" />
           <button
             onClick={() => setOpen(false)}
@@ -699,7 +955,7 @@ function SurveyActionMenu({ survey, onAssign }: { survey: Survey; onAssign?: (s:
   )
 }
 
-function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent, tabKpis, showOrgColumn = false, onSelectSurvey, onAssign }: DashboardTabsProps) {
+function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent, tabKpis, showOrgColumn = false, onSelectSurvey, onAssign, onCreateSiteVisit, onDeleteSiteVisit, onTakeOnVisit }: DashboardTabsProps) {
   const [activeTab, setActiveTab]               = useState<TabId>('surveys')
   const [filterText, setFilterText]             = useState('')
   const [scopeFilter, setScopeFilter]           = useState<SurveyScope | 'all'>('all')
@@ -708,6 +964,15 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
   const [showUnprocessed, setShowUnprocessed]   = useState(false)
   const [scopeOpen, setScopeOpen]               = useState(false)
   const [selected, setSelected]                 = useState<Set<string>>(new Set())
+  const [ctxMenu, setCtxMenu]                   = useState<{ x: number; y: number; surveyIds: string[] } | null>(null)
+
+  React.useEffect(() => {
+    if (!ctxMenu) return
+    const close = () => setCtxMenu(null)
+    document.addEventListener('mousedown', close)
+    document.addEventListener('scroll', close, true)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('scroll', close, true) }
+  }, [ctxMenu])
 
   const q = filterText.toLowerCase()
 
@@ -764,7 +1029,16 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
     setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
 
-  const handleTabChange = (tab: TabId) => { setActiveTab(tab); setSelected(new Set()) }
+  const handleTabChange = (tab: TabId) => { setActiveTab(tab); setSelected(new Set()); setCtxMenu(null) }
+
+  const handleRowContextMenu = (e: React.MouseEvent, surveyId: string) => {
+    if (!onCreateSiteVisit) return
+    e.preventDefault()
+    const ids = selected.has(surveyId) && selected.size > 1
+      ? [...selected]
+      : [surveyId]
+    setCtxMenu({ x: e.clientX, y: e.clientY, surveyIds: ids })
+  }
 
   const currentScopeLabel = SCOPE_OPTIONS.find(s => s.value === scopeFilter)?.label ?? 'Filter by scope...'
   const selectedCount = [...selected].filter(id => activeIds.includes(id)).length
@@ -915,7 +1189,7 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
             </thead>
             <tbody>
               {filteredSurveys.map(s => (
-                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface/40">
+                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface/40" onContextMenu={e => handleRowContextMenu(e, s.id)}>
                   <td className={tdClass}><Checkbox checked={selected.has(s.id)} onClick={() => toggleRow(s.id)} /></td>
                   <td className={`${tdClass} max-w-[180px] truncate`}>
                     {onSelectSurvey
@@ -929,7 +1203,7 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
                   <td className={tdClass}><StatusBadge status={s.status} /></td>
                   <td className={`${tdClass} w-28`}>{s.progress !== undefined ? <ProgressBar value={s.progress} /> : '—'}</td>
                   <td className={`${tdClass} text-text-muted whitespace-nowrap`}>{s.createdDate}</td>
-                  <td className={tdClass}><SurveyActionMenu survey={s} onAssign={onAssign} /></td>
+                  <td className={tdClass}><SurveyActionMenu survey={s} onAssign={onAssign} onCreateSiteVisit={onCreateSiteVisit} onSelectSurvey={onSelectSurvey} /></td>
                 </tr>
               ))}
               {filteredSurveys.length === 0 && (
@@ -992,35 +1266,66 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
                 </th>
                 <th className={thClass}>Processing Status</th>
                 <th className={thClass}>Processed By</th>
-                <th className="px-3 py-2.5 w-16" />
+                <th className="px-3 py-2.5 w-24" />
               </tr>
             </thead>
             <tbody>
-              {filteredVisits.map(s => (
-                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface/40">
-                  <td className={tdClass}><Checkbox checked={selected.has(s.id)} onClick={() => toggleRow(s.id)} /></td>
-                  <td className={`${tdClass} text-accent font-medium max-w-[180px] truncate`}>{s.name}</td>
-                  <td className={`${tdClass} text-text-muted font-mono`}>{s.siteId}</td>
-                  {showOrgColumn && <td className={`${tdClass} text-text-secondary`}>{s.organization}</td>}
-                  <td className={`${tdClass} text-text-secondary`}>{s.assignee}</td>
-                  <td className={tdClass}><VisitBadge status={s.status} /></td>
-                  <td className={`${tdClass} text-text-muted whitespace-nowrap`}>{s.scheduledDate}</td>
-                  <td className={tdClass}>
-                    {s.processed
-                      ? <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border text-emerald-400 bg-emerald-400/10 border-emerald-400/30">
-                          Processed · {s.processingDate}
-                        </span>
-                      : <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border text-amber-400 bg-amber-400/10 border-amber-400/30">
-                          Unprocessed
-                        </span>
-                    }
-                  </td>
-                  <td className={`${tdClass} text-text-secondary`}>
-                    {s.processedBy ?? <span className="text-text-muted italic">—</span>}
-                  </td>
-                  <td className={tdClass}><ActionCell /></td>
-                </tr>
-              ))}
+              {filteredVisits.map(s => {
+                const isOpen = !s.assignee && s.status === 'scheduled'
+                return (
+                  <tr key={s.id} className={`border-b border-border last:border-0 hover:bg-surface/40 ${isOpen ? 'bg-emerald-500/5' : ''}`}>
+                    <td className={tdClass}><Checkbox checked={selected.has(s.id)} onClick={() => toggleRow(s.id)} /></td>
+                    <td className={`${tdClass} text-accent font-medium max-w-[180px] truncate`}>
+                      <div className="flex items-center gap-1.5">
+                        {s.name}
+                        {isOpen && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-400/15 text-emerald-400 border border-emerald-400/30 shrink-0">Open</span>}
+                      </div>
+                    </td>
+                    <td className={`${tdClass} text-text-muted font-mono`}>{s.siteId}</td>
+                    {showOrgColumn && <td className={`${tdClass} text-text-secondary`}>{s.organization}</td>}
+                    <td className={`${tdClass} text-text-secondary`}>
+                      {s.assignee ?? <span className="text-text-muted italic">Unassigned</span>}
+                    </td>
+                    <td className={tdClass}><VisitBadge status={s.status} /></td>
+                    <td className={`${tdClass} text-text-muted whitespace-nowrap`}>{s.scheduledDate}</td>
+                    <td className={tdClass}>
+                      {s.processed
+                        ? <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border text-emerald-400 bg-emerald-400/10 border-emerald-400/30">
+                            Processed · {s.processingDate}
+                          </span>
+                        : <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border text-amber-400 bg-amber-400/10 border-amber-400/30">
+                            Unprocessed
+                          </span>
+                      }
+                    </td>
+                    <td className={`${tdClass} text-text-secondary`}>
+                      {s.processedBy ?? <span className="text-text-muted italic">—</span>}
+                    </td>
+                    <td className={tdClass}>
+                      <div className="flex items-center gap-2">
+                        {isOpen && onTakeOnVisit && (
+                          <button
+                            onClick={() => onTakeOnVisit(s.id)}
+                            className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors whitespace-nowrap"
+                          >
+                            <UserCheck size={11} /> Take On
+                          </button>
+                        )}
+                        {onDeleteSiteVisit && (
+                          <button
+                            onClick={() => onDeleteSiteVisit(s.id)}
+                            className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors whitespace-nowrap"
+                            title="Delete site visit"
+                          >
+                            <Trash2 size={11} /> Delete
+                          </button>
+                        )}
+                        {!isOpen && !onDeleteSiteVisit && <ActionCell />}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
               {filteredVisits.length === 0 && (
                 <tr><td colSpan={showOrgColumn ? 10 : 9} className="px-4 py-8 text-center text-text-muted">No site visits found.</td></tr>
               )}
@@ -1090,13 +1395,39 @@ function DashboardTabs({ surveys, scans, siteVisits, sites, customSurveysContent
           </div>
         </div>
       )}
+
+      {/* Right-click context menu */}
+      {ctxMenu && onCreateSiteVisit && (
+        <div
+          className="fixed z-[100] bg-card border border-border rounded-xl shadow-2xl py-1 min-w-[180px]"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onMouseDown={e => e.stopPropagation()}
+        >
+          {ctxMenu.surveyIds.length > 1 && (
+            <div className="px-3 py-1.5 text-[10px] text-text-muted font-medium uppercase tracking-wide border-b border-border mb-1">
+              {ctxMenu.surveyIds.length} surveys selected
+            </div>
+          )}
+          <button
+            onClick={() => {
+              const targetSurveys = filteredSurveys.filter(s => ctxMenu.surveyIds.includes(s.id))
+              onCreateSiteVisit(targetSurveys.length === 1 ? targetSurveys[0] : targetSurveys)
+              setCtxMenu(null)
+            }}
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-text-secondary hover:bg-surface hover:text-text-primary transition-colors"
+          >
+            <MapPin size={13} className="text-accent shrink-0" />
+            <span>Add to Site Visit{ctxMenu.surveyIds.length > 1 ? ` (${ctxMenu.surveyIds.length})` : ''}</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
 // ─── Assignment Modal ────────────────────────────────────────────────────────
 
-const ASSIGNABLE_USERS = ['Matt Edrich', 'John Smith', 'Susan Smith']
+const ASSIGNABLE_USERS = ['Mike McGuire', 'John Smith', 'Susan Smith']
 
 interface AssignModalProps {
   survey: Survey
@@ -1855,7 +2186,7 @@ function SurveyDetailPage({ survey, onClose, onMarkComplete, onUpdate }: {
 
 // ─── PM Surveys Content (split: Needs Assignment + Assigned) ───────────────
 
-function PMSurveysContent({ surveys, onAssign, onSelectSurvey, cuMembers }: { surveys: Survey[]; onAssign: (id: string, assignee: string, dueDate: string | null) => void; onSelectSurvey?: (id: string) => void; cuMembers?: CUMember[] }) {
+function PMSurveysContent({ surveys, onAssign, onSelectSurvey, onCreateSiteVisit, cuMembers }: { surveys: Survey[]; onAssign: (id: string, assignee: string, dueDate: string | null) => void; onSelectSurvey?: (id: string) => void; onCreateSiteVisit?: (surveys: Survey | Survey[]) => void; cuMembers?: CUMember[] }) {
   const [modalSurvey, setModalSurvey] = useState<Survey | null>(null)
   const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
   const unassigned = [...surveys.filter(s => s.status === 'unassigned')]
@@ -1916,13 +2247,16 @@ function PMSurveysContent({ surveys, onAssign, onSelectSurvey, cuMembers }: { su
                     <td className="px-3 py-2.5 text-text-muted whitespace-nowrap">{s.createdDate}</td>
                     <td className="px-3 py-2.5 text-text-muted whitespace-nowrap">{s.dueDate ?? '—'}</td>
                     <td className="px-3 py-2.5">
-                      <button
-                        onClick={() => setModalSurvey(s)}
-                        className="flex items-center gap-1.5 text-accent hover:text-accent-hover border border-accent/30 hover:border-accent/60 bg-accent/5 hover:bg-accent/10 px-2.5 py-1 rounded-lg transition-colors font-medium"
-                      >
-                        <UserCheck size={11} />
-                        Assign
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setModalSurvey(s)}
+                          className="flex items-center gap-1.5 text-accent hover:text-accent-hover border border-accent/30 hover:border-accent/60 bg-accent/5 hover:bg-accent/10 px-2.5 py-1 rounded-lg transition-colors font-medium"
+                        >
+                          <UserCheck size={11} />
+                          Assign
+                        </button>
+                        <SurveyActionMenu survey={s} onAssign={() => setModalSurvey(s)} onCreateSiteVisit={onCreateSiteVisit} onSelectSurvey={onSelectSurvey} />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1985,13 +2319,16 @@ function PMSurveysContent({ surveys, onAssign, onSelectSurvey, cuMembers }: { su
                         : s.dueDate ?? '—'}
                     </td>
                     <td className="px-3 py-2.5">
-                      <button
-                        onClick={() => setModalSurvey(s)}
-                        className="flex items-center gap-1 text-text-muted hover:text-accent border border-border hover:border-accent/40 px-2 py-1 rounded-lg transition-colors whitespace-nowrap"
-                      >
-                        <UserCheck size={10} />
-                        Reassign
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setModalSurvey(s)}
+                          className="flex items-center gap-1 text-text-muted hover:text-accent border border-border hover:border-accent/40 px-2 py-1 rounded-lg transition-colors whitespace-nowrap"
+                        >
+                          <UserCheck size={10} />
+                          Reassign
+                        </button>
+                        <SurveyActionMenu survey={s} onAssign={() => setModalSurvey(s)} onCreateSiteVisit={onCreateSiteVisit} onSelectSurvey={onSelectSurvey} />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2009,10 +2346,11 @@ function PMSurveysContent({ surveys, onAssign, onSelectSurvey, cuMembers }: { su
 
 // ─── Technician Surveys Content (split: Active + Completed) ─────────────────
 
-function TechSurveysContent({ surveys, showPriorityLock, onSelectSurvey }: {
+function TechSurveysContent({ surveys, showPriorityLock, onSelectSurvey, onCreateSiteVisit }: {
   surveys: Survey[]
   showPriorityLock?: boolean
   onSelectSurvey?: (id: string) => void
+  onCreateSiteVisit?: (surveys: Survey | Survey[]) => void
 }) {
   const [unlocked, setUnlocked] = useState<Set<string>>(new Set())
   const [unblockTarget, setUnblockTarget] = useState<Survey | null>(null)
@@ -2091,6 +2429,11 @@ function TechSurveysContent({ surveys, showPriorityLock, onSelectSurvey }: {
                     <span>·</span>
                     <span>{s.siteName}</span>
                     {s.dueDate && <><span>·</span><span>Due {s.dueDate}</span></>}
+                    {!locked && (
+                      <span onClick={e => e.stopPropagation()}>
+                        <SurveyActionMenu survey={s} onCreateSiteVisit={onCreateSiteVisit} onSelectSurvey={onSelectSurvey} />
+                      </span>
+                    )}
                   </div>
                 </div>
                 <ProgressBar value={locked ? 0 : (s.progress ?? 0)} />
@@ -2118,6 +2461,7 @@ function TechSurveysContent({ surveys, showPriorityLock, onSelectSurvey }: {
                 <th className="px-3 py-2.5 text-left text-text-primary font-semibold">Site ID</th>
                 <th className="px-3 py-2.5 text-left text-text-primary font-semibold">Site Name</th>
                 <th className="px-3 py-2.5 text-left text-text-primary font-semibold">Completed</th>
+                <th className="px-3 py-2.5" />
               </tr>
             </thead>
             <tbody>
@@ -2131,6 +2475,9 @@ function TechSurveysContent({ surveys, showPriorityLock, onSelectSurvey }: {
                   <td className="px-3 py-2.5 text-text-muted font-mono">{s.siteId}</td>
                   <td className="px-3 py-2.5 text-text-primary">{s.siteName}</td>
                   <td className="px-3 py-2.5 text-text-secondary">{s.completedDate ?? '—'}</td>
+                  <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+                    <SurveyActionMenu survey={s} onCreateSiteVisit={onCreateSiteVisit} onSelectSurvey={onSelectSurvey} />
+                  </td>
                 </tr>
               ))}
               {completed.length === 0 && (
@@ -2146,7 +2493,7 @@ function TechSurveysContent({ surveys, showPriorityLock, onSelectSurvey }: {
 
 // ─── Admin View ─────────────────────────────────────────────────────────────
 
-function AdminView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }: RoleViewProps) {
+function AdminView({ orgFilter, surveys: allSurveys, allSiteVisits, onAssign, onSelectSurvey, onCreateSiteVisit, onDeleteSiteVisit, onTakeOnSiteVisit }: RoleViewProps) {
   const { config, addMetric, removeMetric, resetContext } = useKpiConfig('admin')
   const [modalSurvey, setModalSurvey] = useState<Survey | null>(null)
 
@@ -2155,7 +2502,7 @@ function AdminView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }:
 
   const surveys    = applyOrg(allSurveys)
   const scans      = applyOrg(SCANS)
-  const siteVisits = applyOrg(SITE_VISITS)
+  const siteVisits = applyOrg(allSiteVisits)
   const sites      = applyOrg(ALL_SITES)
   const data: KpiData = { surveys, scans, siteVisits, sites }
 
@@ -2205,6 +2552,9 @@ function AdminView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }:
         showOrgColumn={orgFilter === 'all'}
         onSelectSurvey={onSelectSurvey}
         onAssign={setModalSurvey}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={onDeleteSiteVisit}
+        onTakeOnVisit={onTakeOnSiteVisit}
       />
     </div>
   )
@@ -2212,7 +2562,7 @@ function AdminView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }:
 
 // ─── Org Owner View ─────────────────────────────────────────────────────────
 
-function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }: RoleViewProps) {
+function OrgOwnerView({ orgFilter, surveys: allSurveys, allSiteVisits, onAssign, onSelectSurvey, onCreateSiteVisit, onDeleteSiteVisit, onTakeOnSiteVisit }: RoleViewProps) {
   const { config, addMetric, removeMetric, resetContext } = useKpiConfig('org_owner', { surveys: [], scans: [], site_visits: [], sites: [] })
   const [modalSurvey, setModalSurvey] = useState<Survey | null>(null)
 
@@ -2221,7 +2571,7 @@ function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey
 
   const surveys    = applyOrg(allSurveys.filter(s => ORG_FILTER.includes(s.organization)))
   const scans      = applyOrg(ORG_SCANS)
-  const siteVisits = applyOrg(ORG_VISITS)
+  const siteVisits = applyOrg(allSiteVisits.filter(s => ORG_FILTER.includes(s.organization)))
   const sites      = applyOrg(ORG_SITES)
   const data: KpiData = { surveys, scans, siteVisits, sites }
 
@@ -2292,6 +2642,9 @@ function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey
         showOrgColumn={orgFilter === 'all'}
         onSelectSurvey={onSelectSurvey}
         onAssign={setModalSurvey}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={onDeleteSiteVisit}
+        onTakeOnVisit={onTakeOnSiteVisit}
       />
     </div>
   )
@@ -2301,7 +2654,7 @@ function OrgOwnerView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey
 
 const PM_NAME = 'Susan Smith'
 
-function PMView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }: RoleViewProps) {
+function PMView({ orgFilter, surveys: allSurveys, allSiteVisits, onAssign, onSelectSurvey, onCreateSiteVisit, onDeleteSiteVisit, onTakeOnSiteVisit }: RoleViewProps) {
   const [pmMode, setPmMode] = useState<'assign' | 'my_work'>('assign')
   const { config, addMetric, removeMetric, resetContext } = useKpiConfig('pm', { surveys: [], scans: [], site_visits: [], sites: [] })
   const applyOrg = <T extends { organization: string }>(arr: T[]) =>
@@ -2310,7 +2663,7 @@ function PMView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }: Ro
   const surveys    = applyOrg(allSurveys.filter(s => ORG_FILTER.includes(s.organization)))
   const myWork     = surveys.filter(s => s.assignee === PM_NAME)
   const scans      = applyOrg(ORG_SCANS)
-  const siteVisits = applyOrg(ORG_VISITS)
+  const siteVisits = applyOrg(allSiteVisits.filter(s => ORG_FILTER.includes(s.organization)))
   const sites      = applyOrg(ORG_SITES)
 
   // KPI data scopes to personal work in My Work mode
@@ -2333,8 +2686,8 @@ function PMView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }: Ro
   )
 
   const surveysContent = pmMode === 'assign'
-    ? <PMSurveysContent surveys={surveys} onAssign={onAssign} onSelectSurvey={onSelectSurvey} />
-    : <TechSurveysContent surveys={myWork} onSelectSurvey={onSelectSurvey} />
+    ? <PMSurveysContent surveys={surveys} onAssign={onAssign} onSelectSurvey={onSelectSurvey} onCreateSiteVisit={onCreateSiteVisit} />
+    : <TechSurveysContent surveys={myWork} onSelectSurvey={onSelectSurvey} onCreateSiteVisit={onCreateSiteVisit} />
 
   return (
     <div className="space-y-5">
@@ -2383,22 +2736,26 @@ function PMView({ orgFilter, surveys: allSurveys, onAssign, onSelectSurvey }: Ro
         tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
         showOrgColumn={orgFilter === 'all'}
         onSelectSurvey={onSelectSurvey}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={onDeleteSiteVisit}
+        onTakeOnVisit={onTakeOnSiteVisit}
       />
     </div>
   )
 }
 
-// ─── Technician View (Matt) ─────────────────────────────────────────────────
+// ─── Technician View (Mike) ─────────────────────────────────────────────────
 
-function TechnicianView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSelectSurvey }: RoleViewProps) {
+function TechnicianView({ orgFilter, surveys: allSurveys, allSiteVisits, onAssign: _onAssign, onSelectSurvey, onCreateSiteVisit, onDeleteSiteVisit, onTakeOnSiteVisit }: RoleViewProps) {
   const { config, addMetric, removeMetric, resetContext } = useKpiConfig('qc_technician', { surveys: [], scans: [], site_visits: [], sites: [] })
   const applyOrg = <T extends { organization: string }>(arr: T[]) =>
     orgFilter === 'all' ? arr : arr.filter(s => s.organization === orgFilter)
 
-  const surveys    = applyOrg(allSurveys.filter(s => s.assignee === 'Matt Edrich'))
-  const scans      = applyOrg(MATT_SCANS)
-  const siteVisits = applyOrg(MATT_VISITS)
-  const sites      = applyOrg(MATT_SITES)
+  const surveys    = applyOrg(allSurveys.filter(s => s.assignee === 'Mike McGuire'))
+  const scans      = applyOrg(MIKE_SCANS)
+  // Show own visits + any open (unassigned, scheduled) visits so technician can take them on
+  const siteVisits = applyOrg(allSiteVisits.filter(v => v.assignee === 'Mike McGuire' || (!v.assignee && v.status === 'scheduled')))
+  const sites      = applyOrg(MIKE_SITES)
   const data: KpiData = { surveys, scans, siteVisits, sites }
 
   const kpiSection = (ctx: KpiContext, registry: MetricDef[]) => (
@@ -2421,10 +2778,13 @@ function TechnicianView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, o
         scans={scans}
         siteVisits={siteVisits}
         sites={sites}
-        customSurveysContent={<TechSurveysContent surveys={surveys} onSelectSurvey={onSelectSurvey} />}
+        customSurveysContent={<TechSurveysContent surveys={surveys} onSelectSurvey={onSelectSurvey} onCreateSiteVisit={onCreateSiteVisit} />}
         tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
         showOrgColumn={orgFilter === 'all'}
         onSelectSurvey={onSelectSurvey}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={onDeleteSiteVisit}
+        onTakeOnVisit={onTakeOnSiteVisit}
       />
     </div>
   )
@@ -2432,14 +2792,14 @@ function TechnicianView({ orgFilter, surveys: allSurveys, onAssign: _onAssign, o
 
 // ─── QC Technician 2 View (John) ────────────────────────────────────────────
 
-function QcTech2View({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSelectSurvey }: RoleViewProps) {
+function QcTech2View({ orgFilter, surveys: allSurveys, allSiteVisits, onAssign: _onAssign, onSelectSurvey, onCreateSiteVisit, onDeleteSiteVisit, onTakeOnSiteVisit }: RoleViewProps) {
   const { config, addMetric, removeMetric, resetContext } = useKpiConfig('qc_technician_2', { surveys: [], scans: [], site_visits: [], sites: [] })
   const applyOrg = <T extends { organization: string }>(arr: T[]) =>
     orgFilter === 'all' ? arr : arr.filter(s => s.organization === orgFilter)
 
   const surveys    = applyOrg(allSurveys.filter(s => s.assignee === 'John Smith'))
   const scans      = applyOrg(JOHN_SCANS)
-  const siteVisits = applyOrg(JOHN_VISITS)
+  const siteVisits = applyOrg(allSiteVisits.filter(v => v.assignee === 'John Smith' || (!v.assignee && v.status === 'scheduled')))
   const sites      = applyOrg(JOHN_SITES)
   const data: KpiData = { surveys, scans, siteVisits, sites }
 
@@ -2463,13 +2823,25 @@ function QcTech2View({ orgFilter, surveys: allSurveys, onAssign: _onAssign, onSe
         scans={scans}
         siteVisits={siteVisits}
         sites={sites}
-        customSurveysContent={<TechSurveysContent surveys={surveys} showPriorityLock={true} onSelectSurvey={onSelectSurvey} />}
+        customSurveysContent={<TechSurveysContent surveys={surveys} showPriorityLock={true} onSelectSurvey={onSelectSurvey} onCreateSiteVisit={onCreateSiteVisit} />}
         tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
         showOrgColumn={orgFilter === 'all'}
         onSelectSurvey={onSelectSurvey}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={onDeleteSiteVisit}
+        onTakeOnVisit={onTakeOnSiteVisit}
       />
     </div>
   )
+}
+
+// ─── ClickUp Views ───────────────────────────────────────────────────────────
+
+interface CUViewProps {
+  onCreateSiteVisit: (surveys: Survey | Survey[]) => void
+  onSurveyLinked?: (register: (surveyIds: string[], visitId: string) => void) => void
+  onDeleteSiteVisit: (visitId: string) => void
+  onTakeOnSiteVisit: (visitId: string) => void
 }
 
 // ─── ClickUp PM View ────────────────────────────────────────────────────────
@@ -2478,7 +2850,7 @@ const CU_API = 'http://localhost:3001'
 const CU_SURVEYS_LIST     = import.meta.env.VITE_CLICKUP_SURVEYS_LIST_ID     || 'mock_surveys'
 const CU_SITE_VISITS_LIST = import.meta.env.VITE_CLICKUP_SITE_VISITS_LIST_ID || 'mock_site_visits'
 const CU_PM_NAME   = 'Lucy Kien'
-const CU_TECH_NAME = 'Matt Edrich'
+const CU_TECH_NAME = 'Mike McGuire'
 
 interface CUStatus   { status: string; color: string; type: string }
 interface CUAssignee { id: number; username: string; color: string; initials: string }
@@ -2589,7 +2961,7 @@ function cuTaskToSiteVisit(task: CUTask): SiteVisit {
 }
 
 
-function ClickUpPMView() {
+function ClickUpPMView({ onCreateSiteVisit, onSurveyLinked, onDeleteSiteVisit, onTakeOnSiteVisit }: CUViewProps) {
   const [pmMode, setPmMode] = useState<'assign' | 'my_work'>('assign')
   const [surveys, setSurveys]           = useState<Survey[]>([])
   const [siteVisits, setSiteVisits]     = useState<SiteVisit[]>([])
@@ -2598,6 +2970,23 @@ function ClickUpPMView() {
   const [loading, setLoading]           = useState(false)
   const [source, setSource]             = useState<'clickup' | 'mock' | null>(null)
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
+  const [selectedOrg, setSelectedOrg]   = useState<string>('all')
+
+  useEffect(() => {
+    if (onSurveyLinked) {
+      onSurveyLinked((surveyIds, visitId) => {
+        setSurveys(prev => prev.map(s => surveyIds.includes(s.id) ? { ...s, siteVisitId: visitId } : s))
+      })
+    }
+  }, [onSurveyLinked])
+
+  const deleteSiteVisitLocal = useCallback((visitId: string) => {
+    setSiteVisits(prev => prev.filter(v => v.id !== visitId))
+    setSurveys(prev => prev.map(s =>
+      s.siteVisitId === visitId ? { ...s, status: 'unassigned' as const, siteVisitId: undefined } : s
+    ))
+    onDeleteSiteVisit(visitId)
+  }, [onDeleteSiteVisit])
 
   // Fetch tasks + members + list statuses in parallel on mount
   const fetchAll = useCallback(async () => {
@@ -2613,8 +3002,20 @@ function ClickUpPMView() {
       const vd = await vr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
       const md = await mr.json() as { members: CUMember[]; source: 'clickup' | 'mock' }
       const ld = await lr.json() as { statuses?: CUStatus[]; source: 'clickup' | 'mock' }
-      setSurveys((sd.tasks ?? []).map(cuTaskToSurvey))
-      setSiteVisits((vd.tasks ?? []).map(cuTaskToSiteVisit))
+      const freshSurveys = (sd.tasks ?? []).map(cuTaskToSurvey)
+      const freshVisits = (vd.tasks ?? []).map(cuTaskToSiteVisit)
+      const freshVisitIds = new Set(freshVisits.map(v => v.id))
+      setSurveys(prev => {
+        const merged = freshSurveys.map(fs => {
+          const existing = prev.find(p => p.id === fs.id)
+          if (existing?.siteVisitId && !freshVisitIds.has(existing.siteVisitId)) {
+            return { ...fs, status: 'unassigned' as const, siteVisitId: undefined }
+          }
+          return existing?.siteVisitId ? { ...fs, siteVisitId: existing.siteVisitId } : fs
+        })
+        return merged
+      })
+      setSiteVisits(freshVisits)
       setCuMembers(md.members ?? [])
       // Find the workspace's actual "done" status (type === 'closed')
       const closedStatus = (ld.statuses ?? []).find(s => s.type === 'closed')
@@ -2625,6 +3026,10 @@ function ClickUpPMView() {
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  const cuOrgs = Array.from(new Set(surveys.map(s => s.organization))).filter(Boolean)
+  const filteredSurveys    = selectedOrg === 'all' ? surveys    : surveys.filter(s => s.organization === selectedOrg)
+  const filteredSiteVisits = selectedOrg === 'all' ? siteVisits : siteVisits.filter(v => v.organization === selectedOrg)
 
   // onAssign: optimistic update + real-time write to ClickUp
   const onAssign = useCallback((surveyId: string, assignee: string, dueDate: string | null) => {
@@ -2689,11 +3094,11 @@ function ClickUpPMView() {
     }
   }, [cuClosedStatus])
 
-  const selectedCUSurvey = selectedSurveyId ? surveys.find(s => s.id === selectedSurveyId) ?? null : null
+  const selectedCUSurvey = selectedSurveyId ? filteredSurveys.find(s => s.id === selectedSurveyId) ?? null : null
 
-  const myWork = surveys.filter(s => s.assignee === CU_PM_NAME)
+  const myWork = filteredSurveys.filter(s => s.assignee === CU_PM_NAME)
   const myActiveCount = myWork.filter(s => s.status !== 'completed').length
-  const displaySurveys = pmMode === 'my_work' ? myWork : surveys
+  const displaySurveys = pmMode === 'my_work' ? myWork : filteredSurveys
 
   // Connection banner — tiny, above mode switcher
   const banner = source ? (
@@ -2729,7 +3134,14 @@ function ClickUpPMView() {
 
       {banner}
 
-      {/* Same mode switcher as PMView */}
+      {/* Org switcher */}
+      {cuOrgs.length > 0 && (
+        <div className="flex justify-end">
+          <OrgSwitcher orgs={cuOrgs} value={selectedOrg} onChange={setSelectedOrg} allowAll={true} allLabel="FieldSync" />
+        </div>
+      )}
+
+      {/* Mode switcher */}
       <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 w-fit">
         <button
           onClick={() => setPmMode('assign')}
@@ -2758,34 +3170,53 @@ function ClickUpPMView() {
         </button>
       </div>
 
-      {/* Same DashboardTabs — surveys + site visits from ClickUp, scans/sites from local */}
       <DashboardTabs
         surveys={displaySurveys}
         scans={ORG_SCANS}
-        siteVisits={siteVisits}
+        siteVisits={filteredSiteVisits}
         sites={ORG_SITES}
         customSurveysContent={
           pmMode === 'assign'
-            ? <PMSurveysContent surveys={surveys} onAssign={onAssign} cuMembers={cuMembers} onSelectSurvey={setSelectedSurveyId} />
+            ? <PMSurveysContent surveys={filteredSurveys} onAssign={onAssign} cuMembers={cuMembers} onSelectSurvey={setSelectedSurveyId} onCreateSiteVisit={onCreateSiteVisit} />
             : undefined
         }
         onSelectSurvey={setSelectedSurveyId}
         showOrgColumn={false}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={deleteSiteVisitLocal}
+        onTakeOnVisit={onTakeOnSiteVisit}
       />
     </div>
   )
 }
 
-// ─── ClickUp Technician View (Matt Edrich) ──────────────────────────────────
+// ─── ClickUp Technician View (Mike McGuire) ──────────────────────────────────
 
-function ClickUpTechView() {
+function ClickUpTechView({ onCreateSiteVisit, onSurveyLinked, onDeleteSiteVisit, onTakeOnSiteVisit }: CUViewProps) {
   const [surveys, setSurveys]           = useState<Survey[]>([])
   const [siteVisits, setSiteVisits]     = useState<SiteVisit[]>([])
   const [cuClosedStatus, setCuClosedStatus] = useState<string>('complete')
   const [loading, setLoading]           = useState(false)
   const [source, setSource]             = useState<'clickup' | 'mock' | null>(null)
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
+  const [selectedOrg, setSelectedOrg]   = useState<string>('')
   const { config, addMetric, removeMetric, resetContext } = useKpiConfig('clickup_technician', { surveys: [], scans: [], site_visits: [], sites: [] })
+
+  useEffect(() => {
+    if (onSurveyLinked) {
+      onSurveyLinked((surveyIds, visitId) => {
+        setSurveys(prev => prev.map(s => surveyIds.includes(s.id) ? { ...s, siteVisitId: visitId } : s))
+      })
+    }
+  }, [onSurveyLinked])
+
+  const deleteSiteVisitLocal = useCallback((visitId: string) => {
+    setSiteVisits(prev => prev.filter(v => v.id !== visitId))
+    setSurveys(prev => prev.map(s =>
+      s.siteVisitId === visitId ? { ...s, status: 'unassigned' as const, siteVisitId: undefined } : s
+    ))
+    onDeleteSiteVisit(visitId)
+  }, [onDeleteSiteVisit])
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -2798,8 +3229,20 @@ function ClickUpTechView() {
       const sd = await sr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
       const vd = await vr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
       const ld = await lr.json() as { statuses?: CUStatus[]; source: 'clickup' | 'mock' }
-      setSurveys((sd.tasks ?? []).map(cuTaskToSurvey))
-      setSiteVisits((vd.tasks ?? []).map(cuTaskToSiteVisit))
+      const freshSurveys = (sd.tasks ?? []).map(cuTaskToSurvey)
+      const freshVisits = (vd.tasks ?? []).map(cuTaskToSiteVisit)
+      const freshVisitIds = new Set(freshVisits.map(v => v.id))
+      setSurveys(prev => {
+        const merged = freshSurveys.map(fs => {
+          const existing = prev.find(p => p.id === fs.id)
+          if (existing?.siteVisitId && !freshVisitIds.has(existing.siteVisitId)) {
+            return { ...fs, status: 'unassigned' as const, siteVisitId: undefined }
+          }
+          return existing?.siteVisitId ? { ...fs, siteVisitId: existing.siteVisitId } : fs
+        })
+        return merged
+      })
+      setSiteVisits(freshVisits)
       const closedStatus = (ld.statuses ?? []).find(s => s.type === 'closed')
       if (closedStatus) setCuClosedStatus(closedStatus.status)
       setSource(sd.source)
@@ -2836,10 +3279,19 @@ function ClickUpTechView() {
     }
   }, [cuClosedStatus])
 
-  // Filter to Matt's tasks only
-  const mySurveys    = surveys.filter(s => s.assignee === CU_TECH_NAME)
-  const mySiteVisits = siteVisits.filter(v => v.assignee === CU_TECH_NAME)
-  const data: KpiData = { surveys: mySurveys, scans: MATT_SCANS, siteVisits: mySiteVisits, sites: MATT_SITES }
+  // Auto-select first org (prefer FieldSync) once surveys load — tech is locked to one org
+  useEffect(() => {
+    if (surveys.length > 0 && !selectedOrg) {
+      const orgs = Array.from(new Set(surveys.map(s => s.organization))).filter(Boolean)
+      const pref = orgs.find(o => o.toLowerCase().includes('fieldsync')) ?? orgs[0] ?? ''
+      setSelectedOrg(pref)
+    }
+  }, [surveys, selectedOrg])
+
+  // Filter to Mike's tasks, scoped to selected org
+  const mySurveys    = surveys.filter(s => s.assignee === CU_TECH_NAME && (!selectedOrg || s.organization === selectedOrg))
+  const mySiteVisits = siteVisits.filter(v => v.assignee === CU_TECH_NAME && (!selectedOrg || v.organization === selectedOrg))
+  const data: KpiData = { surveys: mySurveys, scans: MIKE_SCANS, siteVisits: mySiteVisits, sites: MIKE_SITES }
 
   const kpiSection = (ctx: KpiContext, registry: MetricDef[]) => (
     <KpiSection
@@ -2887,15 +3339,384 @@ function ClickUpTechView() {
         />
       )}
       {banner}
+
+      {/* Org label — tech is locked to one org */}
+      {selectedOrg && (
+        <div className="flex items-center gap-2">
+          <Building2 size={13} className="text-accent" />
+          <span className="text-text-secondary text-xs">Viewing:</span>
+          <span className="text-text-primary text-xs font-medium">{selectedOrg}</span>
+        </div>
+      )}
+
       <DashboardTabs
         surveys={mySurveys}
-        scans={MATT_SCANS}
+        scans={MIKE_SCANS}
         siteVisits={mySiteVisits}
-        sites={MATT_SITES}
-        customSurveysContent={<TechSurveysContent surveys={mySurveys} onSelectSurvey={setSelectedSurveyId} />}
+        sites={MIKE_SITES}
+        customSurveysContent={<TechSurveysContent surveys={mySurveys} onSelectSurvey={setSelectedSurveyId} onCreateSiteVisit={onCreateSiteVisit} />}
         tabKpis={{ surveys: kpiSection('surveys', SURVEY_METRICS), scans: kpiSection('scans', SCAN_METRICS), site_visits: kpiSection('site_visits', VISIT_METRICS), sites: kpiSection('sites', SITE_METRICS) }}
         showOrgColumn={false}
         onSelectSurvey={setSelectedSurveyId}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={deleteSiteVisitLocal}
+        onTakeOnVisit={onTakeOnSiteVisit}
+      />
+    </div>
+  )
+}
+
+// ─── ClickUp Org Owner View (Daniel Valencia) ────────────────────────────────
+
+function ClickUpOrgOwnerView({ onCreateSiteVisit, onSurveyLinked, onDeleteSiteVisit, onTakeOnSiteVisit }: CUViewProps) {
+  const [surveys, setSurveys]           = useState<Survey[]>([])
+  const [siteVisits, setSiteVisits]     = useState<SiteVisit[]>([])
+  const [loading, setLoading]           = useState(false)
+  const [source, setSource]             = useState<'clickup' | 'mock' | null>(null)
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
+  const [selectedOrg, setSelectedOrg]   = useState<string>('all')
+
+  useEffect(() => {
+    if (onSurveyLinked) {
+      onSurveyLinked((surveyIds, visitId) => {
+        setSurveys(prev => prev.map(s => surveyIds.includes(s.id) ? { ...s, siteVisitId: visitId } : s))
+      })
+    }
+  }, [onSurveyLinked])
+
+  const deleteSiteVisitLocal = useCallback((visitId: string) => {
+    setSiteVisits(prev => prev.filter(v => v.id !== visitId))
+    setSurveys(prev => prev.map(s =>
+      s.siteVisitId === visitId ? { ...s, status: 'unassigned' as const, siteVisitId: undefined } : s
+    ))
+    onDeleteSiteVisit(visitId)
+  }, [onDeleteSiteVisit])
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [sr, vr] = await Promise.all([
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}/tasks`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SITE_VISITS_LIST}/tasks`),
+      ])
+      const sd = await sr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
+      const vd = await vr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
+      const freshSurveys = (sd.tasks ?? []).map(cuTaskToSurvey)
+      const freshVisits = (vd.tasks ?? []).map(cuTaskToSiteVisit)
+      const freshVisitIds = new Set(freshVisits.map(v => v.id))
+      setSurveys(prev => {
+        const merged = freshSurveys.map(fs => {
+          const existing = prev.find(p => p.id === fs.id)
+          if (existing?.siteVisitId && !freshVisitIds.has(existing.siteVisitId)) {
+            return { ...fs, status: 'unassigned' as const, siteVisitId: undefined }
+          }
+          return existing?.siteVisitId ? { ...fs, siteVisitId: existing.siteVisitId } : fs
+        })
+        return merged
+      })
+      setSiteVisits(freshVisits)
+      setSource(sd.source)
+    } catch (e) { console.error('ClickUp fetch failed', e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  const orgs = Array.from(new Set(surveys.map(s => s.organization))).filter(Boolean)
+  const filteredSurveys    = selectedOrg === 'all' ? surveys    : surveys.filter(s => s.organization === selectedOrg)
+  const filteredSiteVisits = selectedOrg === 'all' ? siteVisits : siteVisits.filter(v => v.organization === selectedOrg)
+
+  const selectedSurvey = selectedSurveyId ? filteredSurveys.find(s => s.id === selectedSurveyId) ?? null : null
+
+  // Health summary — single FieldSync aggregate card
+  const fieldSyncStats = {
+    label:      selectedOrg === 'all' ? 'FieldSync' : selectedOrg,
+    total:      filteredSurveys.length,
+    unassigned: filteredSurveys.filter(x => x.status === 'unassigned').length,
+    inProgress: filteredSurveys.filter(x => x.status === 'in_progress').length,
+    completed:  filteredSurveys.filter(x => x.status === 'completed').length,
+    overdue:    filteredSurveys.filter(x => x.status === 'overdue').length,
+  }
+  const banner = source ? (
+    <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg w-fit border mb-4 ${
+      source === 'clickup'
+        ? 'bg-green-500/8 border-green-500/20 text-green-400'
+        : 'bg-violet-400/8 border-violet-400/20 text-violet-400'
+    }`}>
+      {source === 'clickup'
+        ? <><CheckCircle2 size={11} /> Live from ClickUp</>
+        : <><Wifi size={11} /> Demo mode — add CLICKUP_API_KEY to .env</>}
+    </div>
+  ) : null
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-text-muted text-sm gap-2">
+        <RefreshCw size={14} className="animate-spin" /> Loading from ClickUp…
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      {selectedSurvey && (
+        <SurveyDetailPage
+          survey={selectedSurvey}
+          onClose={() => setSelectedSurveyId(null)}
+          onMarkComplete={() => {}}
+          onUpdate={() => {}}
+        />
+      )}
+      {banner}
+
+      {orgs.length > 0 && (
+        <div className="flex justify-end">
+          <OrgSwitcher orgs={orgs} value={selectedOrg} onChange={setSelectedOrg} allowAll={true} allLabel="FieldSync" />
+        </div>
+      )}
+
+      {/* Org health summary card — selected org only */}
+      {/* FieldSync aggregate health card */}
+      {filteredSurveys.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Building2 size={14} className="text-accent shrink-0" />
+            <span className="text-text-primary text-sm font-semibold">{fieldSyncStats.label}</span>
+            <span className="ml-auto text-[11px] text-text-muted font-medium">{fieldSyncStats.total} surveys</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {[
+              { label: 'Unassigned', value: fieldSyncStats.unassigned, color: 'text-text-muted' },
+              { label: 'In Progress', value: fieldSyncStats.inProgress, color: 'text-blue-400' },
+              { label: 'Completed',  value: fieldSyncStats.completed,  color: 'text-emerald-400' },
+              { label: 'Overdue',    value: fieldSyncStats.overdue,    color: 'text-red-400' },
+            ].map(stat => (
+              <div key={stat.label} className="bg-surface rounded-lg p-2">
+                <div className={`text-lg font-bold ${stat.color}`}>{stat.value}</div>
+                <div className="text-[10px] text-text-muted leading-tight">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <DashboardTabs
+        surveys={filteredSurveys}
+        scans={ORG_SCANS}
+        siteVisits={filteredSiteVisits}
+        sites={ORG_SITES}
+        showOrgColumn={false}
+        onSelectSurvey={setSelectedSurveyId}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={deleteSiteVisitLocal}
+        onTakeOnVisit={onTakeOnSiteVisit}
+      />
+    </div>
+  )
+}
+
+// ─── ClickUp Admin View (Pryce Valencia) ─────────────────────────────────────
+
+function ClickUpAdminView({ onCreateSiteVisit, onSurveyLinked, onDeleteSiteVisit, onTakeOnSiteVisit }: CUViewProps) {
+  const [surveys, setSurveys]           = useState<Survey[]>([])
+  const [siteVisits, setSiteVisits]     = useState<SiteVisit[]>([])
+  const [cuMembers, setCuMembers]       = useState<CUMember[]>([])
+  const [cuClosedStatus, setCuClosedStatus] = useState<string>('complete')
+  const [loading, setLoading]           = useState(false)
+  const [source, setSource]             = useState<'clickup' | 'mock' | null>(null)
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
+  const [selectedOrg, setSelectedOrg]   = useState<string>('all')
+
+  useEffect(() => {
+    if (onSurveyLinked) {
+      onSurveyLinked((surveyIds, visitId) => {
+        setSurveys(prev => prev.map(s => surveyIds.includes(s.id) ? { ...s, siteVisitId: visitId } : s))
+      })
+    }
+  }, [onSurveyLinked])
+
+  const deleteSiteVisitLocal = useCallback((visitId: string) => {
+    setSiteVisits(prev => prev.filter(v => v.id !== visitId))
+    setSurveys(prev => prev.map(s =>
+      s.siteVisitId === visitId ? { ...s, status: 'unassigned' as const, siteVisitId: undefined } : s
+    ))
+    onDeleteSiteVisit(visitId)
+  }, [onDeleteSiteVisit])
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [sr, vr, mr, lr] = await Promise.all([
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}/tasks`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SITE_VISITS_LIST}/tasks`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}/members`),
+        fetch(`${CU_API}/api/clickup/lists/${CU_SURVEYS_LIST}`),
+      ])
+      const sd = await sr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
+      const vd = await vr.json() as { tasks: CUTask[]; source: 'clickup' | 'mock' }
+      const md = await mr.json() as { members: CUMember[]; source: 'clickup' | 'mock' }
+      const ld = await lr.json() as { statuses?: CUStatus[]; source: 'clickup' | 'mock' }
+      const freshSurveys = (sd.tasks ?? []).map(cuTaskToSurvey)
+      const freshVisits = (vd.tasks ?? []).map(cuTaskToSiteVisit)
+      const freshVisitIds = new Set(freshVisits.map(v => v.id))
+      setSurveys(prev => {
+        const merged = freshSurveys.map(fs => {
+          const existing = prev.find(p => p.id === fs.id)
+          if (existing?.siteVisitId && !freshVisitIds.has(existing.siteVisitId)) {
+            return { ...fs, status: 'unassigned' as const, siteVisitId: undefined }
+          }
+          return existing?.siteVisitId ? { ...fs, siteVisitId: existing.siteVisitId } : fs
+        })
+        return merged
+      })
+      setSiteVisits(freshVisits)
+      setCuMembers(md.members ?? [])
+      const closedStatus = (ld.statuses ?? []).find(s => s.type === 'closed')
+      if (closedStatus) setCuClosedStatus(closedStatus.status)
+      setSource(sd.source)
+    } catch (e) { console.error('ClickUp fetch failed', e) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  const onAssign = useCallback((surveyId: string, assignee: string, dueDate: string | null) => {
+    setSurveys(prev => prev.map(s =>
+      s.id === surveyId
+        ? { ...s, assignee, status: s.status === 'unassigned' ? 'pending' : s.status, ...(dueDate !== null ? { dueDate } : {}) }
+        : s
+    ))
+    const body: Record<string, unknown> = {}
+    const newMember = cuMembers.find(m => m.username === assignee)
+    if (newMember) {
+      const prevSurvey = surveys.find(s => s.id === surveyId)
+      const prevMember = prevSurvey?.assignee ? cuMembers.find(m => m.username === prevSurvey.assignee) : undefined
+      body.assignees = { add: [newMember.id], ...(prevMember ? { rem: [prevMember.id] } : {}) }
+    }
+    if (dueDate !== null) {
+      const ms = new Date(dueDate).getTime()
+      if (!isNaN(ms)) body.due_date = ms
+    }
+    if (Object.keys(body).length > 0) {
+      fetch(`${CU_API}/api/clickup/tasks/${surveyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(e => console.error('ClickUp write-back failed', e))
+    }
+  }, [cuMembers, surveys])
+
+  const onMarkComplete = useCallback((id: string) => {
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    setSurveys(prev => prev.map(s => s.id === id ? { ...s, status: 'completed', progress: 100, completedDate: today } : s))
+    fetch(`${CU_API}/api/clickup/tasks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: cuClosedStatus }),
+    }).catch(e => console.error('ClickUp complete write-back failed', e))
+  }, [cuClosedStatus])
+
+  const onUpdate = useCallback((id: string, updates: Partial<Survey>) => {
+    setSurveys(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
+    const body: Record<string, unknown> = {}
+    if (updates.status) body.status = updates.status === 'completed' ? cuClosedStatus : updates.status.replace('_', ' ')
+    if (updates.dueDate) {
+      const ms = new Date(updates.dueDate).getTime()
+      if (!isNaN(ms)) body.due_date = ms
+    }
+    if (Object.keys(body).length > 0) {
+      fetch(`${CU_API}/api/clickup/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(e => console.error('ClickUp update write-back failed', e))
+    }
+  }, [cuClosedStatus])
+
+  const orgs = Array.from(new Set(surveys.map(s => s.organization))).filter(Boolean)
+  const filteredSurveys    = !selectedOrg || selectedOrg === 'all' ? surveys    : surveys.filter(s => s.organization === selectedOrg)
+  const filteredSiteVisits = !selectedOrg || selectedOrg === 'all' ? siteVisits : siteVisits.filter(v => v.organization === selectedOrg)
+
+  const selectedSurvey = selectedSurveyId ? filteredSurveys.find(s => s.id === selectedSurveyId) ?? null : null
+
+  // Top-level stats (filtered)
+  const total      = filteredSurveys.length
+  const unassigned = filteredSurveys.filter(s => s.status === 'unassigned').length
+  const inProgress = filteredSurveys.filter(s => s.status === 'in_progress').length
+  const completed  = filteredSurveys.filter(s => s.status === 'completed').length
+  const overdue    = filteredSurveys.filter(s => s.status === 'overdue').length
+
+  const banner = source ? (
+    <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg w-fit border mb-4 ${
+      source === 'clickup'
+        ? 'bg-green-500/8 border-green-500/20 text-green-400'
+        : 'bg-violet-400/8 border-violet-400/20 text-violet-400'
+    }`}>
+      {source === 'clickup'
+        ? <><CheckCircle2 size={11} /> Live from ClickUp</>
+        : <><Wifi size={11} /> Demo mode — add CLICKUP_API_KEY to .env</>}
+    </div>
+  ) : null
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-text-muted text-sm gap-2">
+        <RefreshCw size={14} className="animate-spin" /> Loading from ClickUp…
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      {selectedSurvey && (
+        <SurveyDetailPage
+          survey={selectedSurvey}
+          onClose={() => setSelectedSurveyId(null)}
+          onMarkComplete={onMarkComplete}
+          onUpdate={onUpdate}
+        />
+      )}
+      {banner}
+
+      {/* Org switcher */}
+      {orgs.length > 0 && (
+        <div className="flex justify-end">
+          <OrgSwitcher
+            orgs={orgs}
+            value={selectedOrg}
+            onChange={setSelectedOrg}
+            allowAll={true}
+            allLabel="FieldSync"
+          />
+        </div>
+      )}
+
+      {/* Overview KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {[
+          { label: 'Total Surveys', value: total,      color: 'text-text-primary' },
+          { label: 'Unassigned',    value: unassigned,  color: 'text-text-muted' },
+          { label: 'In Progress',   value: inProgress,  color: 'text-blue-400' },
+          { label: 'Completed',     value: completed,   color: 'text-emerald-400' },
+          { label: 'Overdue',       value: overdue,     color: 'text-red-400' },
+        ].map(kpi => (
+          <div key={kpi.label} className="bg-card border border-border rounded-xl p-4 text-center">
+            <div className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</div>
+            <div className="text-xs text-text-muted mt-1">{kpi.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <DashboardTabs
+        surveys={filteredSurveys}
+        scans={ORG_SCANS}
+        siteVisits={filteredSiteVisits}
+        sites={ORG_SITES}
+        showOrgColumn={false}
+        onSelectSurvey={setSelectedSurveyId}
+        onCreateSiteVisit={onCreateSiteVisit}
+        onDeleteSiteVisit={deleteSiteVisitLocal}
+        onTakeOnVisit={onTakeOnSiteVisit}
       />
     </div>
   )
@@ -2909,6 +3730,8 @@ const ROLE_META = {
   pm:              { subtitle: 'Manage survey assignments and track QC technician progress across your organizations.' },
   qc_technician:   { subtitle: 'Your assigned surveys, progress, and completed inspection history.' },
   qc_technician_2: { subtitle: 'Your assigned surveys, progress, and completed inspection history.' },
+  clickup_admin:       { subtitle: 'Full org-wide view of all ClickUp surveys, assignments, and status.' },
+  clickup_org_owner:   { subtitle: 'Survey health and completion status across your organizations, live from ClickUp.' },
   clickup_pm:          { subtitle: 'Live task view sourced directly from ClickUp — surveys and site visits.' },
   clickup_technician:  { subtitle: 'Your assigned surveys and site visits, live from ClickUp.' },
 }
@@ -2917,14 +3740,15 @@ const QADashboard: React.FC = () => {
   const { role } = useRole()
   const { subtitle } = ROLE_META[role] ?? ROLE_META['pm']
   const isAdmin = role === 'admin'
-  const [orgFilter, setOrgFilter] = useState<string>(isAdmin ? 'all' : (ROLE_ORGS[role]?.[0] ?? 'all'))
+  const [orgFilter, setOrgFilter] = useState<string>(ROLE_ORGS[role]?.[0] ?? 'all')
   const [surveys, setSurveys] = useState<Survey[]>(ALL_SURVEYS)
+  const [allSiteVisits, setAllSiteVisits] = useState<SiteVisit[]>(SITE_VISITS)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null)
 
-  // When role changes, reset to 'all' for admin, first org for everyone else
+  // When role changes, reset to first permitted org (FieldSync Org for admin/org_owner)
   useEffect(() => {
-    setOrgFilter(role === 'admin' ? 'all' : (ROLE_ORGS[role]?.[0] ?? 'all'))
+    setOrgFilter(ROLE_ORGS[role]?.[0] ?? 'all')
   }, [role])
 
   const availableOrgs = ROLE_ORGS[role] ?? []
@@ -2958,7 +3782,106 @@ const QADashboard: React.FC = () => {
     setSurveys(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
   }
 
-  const viewProps = { orgFilter, surveys, onAssign: assignSurvey, onSelectSurvey: setSelectedSurveyId }
+  const [siteVisitModalSurveys, setSiteVisitModalSurveys] = useState<Survey[] | null>(null)
+
+  const onSurveyLinkedRef = React.useRef<((surveyIds: string[], visitId: string) => void) | null>(null)
+
+  const openSiteVisitModal = (input: Survey | Survey[]) => {
+    setSiteVisitModalSurveys(Array.isArray(input) ? input : [input])
+  }
+
+  const handleSiteVisitSubmit = (opts: SiteVisitModalSubmit) => {
+    const modalSurveys = siteVisitModalSurveys!
+    const primary = modalSurveys[0]
+    setSiteVisitModalSurveys(null)
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const surveyLabel = modalSurveys.length === 1 ? `"${primary.name}"` : `${modalSurveys.length} surveys`
+
+    if (opts.existingVisitId) {
+      // Link survey(s) to existing site visit
+      const visit = allSiteVisits.find(v => v.id === opts.existingVisitId)
+      const updates: Partial<SiteVisit> = {}
+      if (opts.assignee) updates.assignee = opts.assignee
+      if (opts.dueDate) updates.scheduledDate = opts.dueDate
+      if (Object.keys(updates).length > 0) {
+        setAllSiteVisits(prev => prev.map(v => v.id === opts.existingVisitId ? { ...v, ...updates } : v))
+      }
+      const linkedIds = modalSurveys.map(s => s.id)
+      setSurveys(prev => prev.map(s => linkedIds.includes(s.id) ? { ...s, siteVisitId: opts.existingVisitId } : s))
+      onSurveyLinkedRef.current?.(linkedIds, opts.existingVisitId!)
+      const id = Date.now().toString()
+      setToasts(t => [...t, { id, message: `${surveyLabel} added to "${visit?.name ?? 'site visit'}"` }])
+      setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
+    } else {
+      // Create new site visit
+      const visitName = opts.newVisitName ?? `${primary.siteName} Site Visit`
+      const newVisit: SiteVisit = {
+        id: `SV-NEW-${Date.now()}`,
+        name: visitName,
+        siteId: primary.siteId,
+        siteName: primary.siteName,
+        organization: primary.organization,
+        scope: primary.scope,
+        status: 'scheduled',
+        assignee: opts.assignee,
+        scheduledDate: opts.dueDate ?? today,
+        processed: false,
+      }
+      setAllSiteVisits(prev => [newVisit, ...prev])
+      const linkedIds = modalSurveys.map(s => s.id)
+      setSurveys(prev => prev.map(s => linkedIds.includes(s.id) ? { ...s, siteVisitId: newVisit.id } : s))
+      onSurveyLinkedRef.current?.(linkedIds, newVisit.id)
+      const id = Date.now().toString()
+      setToasts(t => [...t, { id, message: `Site visit created for ${surveyLabel} — available for anyone to take on` }])
+      setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 5000)
+
+      // Write back to ClickUp — fire and forget
+      fetch(`${CU_API}/api/clickup/lists/${CU_SITE_VISITS_LIST}/task`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: visitName,
+          description: `Site visit created from ${modalSurveys.length === 1 ? `survey: ${primary.name} (ID: ${primary.id})` : `${modalSurveys.length} surveys: ${modalSurveys.map(s => s.name).join(', ')}`}`,
+          status: 'scheduled',
+          ...(opts.dueDate ? { due_date: new Date(opts.dueDate).getTime() } : {}),
+        }),
+      }).catch(e => console.error('ClickUp site visit write-back failed', e))
+    }
+  }
+
+  const takeOnSiteVisit = (visitId: string) => {
+    const userName = ROLE_PERSONA_NAME[role] ?? 'Unknown'
+    setAllSiteVisits(prev => prev.map(v =>
+      v.id === visitId ? { ...v, assignee: userName, status: 'in_progress' } : v
+    ))
+    const visit = allSiteVisits.find(v => v.id === visitId)
+    if (visit) {
+      const id = Date.now().toString()
+      setToasts(t => [...t, { id, message: `You've taken on "${visit.name}"` }])
+      setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
+    }
+  }
+
+  const deleteSiteVisit = (visitId: string) => {
+    const visit = allSiteVisits.find(v => v.id === visitId)
+    setAllSiteVisits(prev => prev.filter(v => v.id !== visitId))
+    setSurveys(prev => prev.map(s =>
+      s.siteVisitId === visitId ? { ...s, status: 'unassigned', siteVisitId: undefined } : s
+    ))
+    if (visit) {
+      const id = Date.now().toString()
+      setToasts(t => [...t, { id, message: `Site visit "${visit.name}" deleted — linked surveys unallocated` }])
+      setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 5000)
+    }
+  }
+
+  const viewProps = {
+    orgFilter, surveys, allSiteVisits, onAssign: assignSurvey,
+    onSelectSurvey: setSelectedSurveyId,
+    onCreateSiteVisit: openSiteVisitModal,
+    onDeleteSiteVisit: deleteSiteVisit,
+    onTakeOnSiteVisit: takeOnSiteVisit,
+  }
 
   const selectedSurvey = selectedSurveyId ? surveys.find(s => s.id === selectedSurveyId) ?? null : null
 
@@ -2985,7 +3908,7 @@ const QADashboard: React.FC = () => {
           </div>
         </div>
 
-        {role !== 'clickup_pm' && role !== 'clickup_technician' && (
+        {!role.startsWith('clickup_') && (
           <OrgSwitcher
             orgs={availableOrgs}
             value={orgFilter}
@@ -2995,13 +3918,24 @@ const QADashboard: React.FC = () => {
         )}
       </div>
 
-      {role === 'admin'           && <AdminView       {...viewProps} />}
-      {role === 'org_owner'       && <OrgOwnerView    {...viewProps} />}
-      {role === 'pm'              && <PMView           {...viewProps} />}
-      {role === 'qc_technician'   && <TechnicianView  {...viewProps} />}
-      {role === 'qc_technician_2' && <QcTech2View     {...viewProps} />}
-      {role === 'clickup_pm'          && <ClickUpPMView />}
-      {role === 'clickup_technician'  && <ClickUpTechView />}
+      {role === 'admin'              && <AdminView       {...viewProps} />}
+      {role === 'org_owner'          && <OrgOwnerView    {...viewProps} />}
+      {role === 'pm'                 && <PMView           {...viewProps} />}
+      {role === 'qc_technician'      && <TechnicianView  {...viewProps} />}
+      {role === 'qc_technician_2'    && <QcTech2View     {...viewProps} />}
+      {role === 'clickup_admin'      && <ClickUpAdminView      onCreateSiteVisit={openSiteVisitModal} onSurveyLinked={fn => { onSurveyLinkedRef.current = fn }} onDeleteSiteVisit={deleteSiteVisit} onTakeOnSiteVisit={takeOnSiteVisit} />}
+      {role === 'clickup_org_owner'  && <ClickUpOrgOwnerView   onCreateSiteVisit={openSiteVisitModal} onSurveyLinked={fn => { onSurveyLinkedRef.current = fn }} onDeleteSiteVisit={deleteSiteVisit} onTakeOnSiteVisit={takeOnSiteVisit} />}
+      {role === 'clickup_pm'         && <ClickUpPMView          onCreateSiteVisit={openSiteVisitModal} onSurveyLinked={fn => { onSurveyLinkedRef.current = fn }} onDeleteSiteVisit={deleteSiteVisit} onTakeOnSiteVisit={takeOnSiteVisit} />}
+      {role === 'clickup_technician' && <ClickUpTechView         onCreateSiteVisit={openSiteVisitModal} onSurveyLinked={fn => { onSurveyLinkedRef.current = fn }} onDeleteSiteVisit={deleteSiteVisit} onTakeOnSiteVisit={takeOnSiteVisit} />}
+
+      {siteVisitModalSurveys && (
+        <AddToSiteVisitModal
+          surveys={siteVisitModalSurveys}
+          siteVisits={allSiteVisits}
+          onClose={() => setSiteVisitModalSurveys(null)}
+          onSubmit={handleSiteVisitSubmit}
+        />
+      )}
     </div>
   )
 }

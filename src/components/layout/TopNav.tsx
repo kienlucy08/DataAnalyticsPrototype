@@ -5,17 +5,19 @@ import type { Role } from '../../context/RoleContext'
 import { useProto } from '../../context/PrototypeContext'
 
 const ALL_ROLES: { value: Role; label: string; icon: React.ReactNode; proto: 1 | 2 | 'both' }[] = [
-  { value: 'admin',              label: 'Admin',           icon: <Shield size={14} />,   proto: 1 },
-  { value: 'org_owner',          label: 'Org Owner',       icon: <Building2 size={14} />, proto: 1 },
-  { value: 'pm',                 label: 'Project Manager', icon: <Briefcase size={14} />, proto: 1 },
-  { value: 'qc_technician',      label: 'QC Technician',   icon: <Wrench size={14} />,    proto: 1 },
-  { value: 'qc_technician_2',    label: 'QC Technician',   icon: <Wrench size={14} />,    proto: 1 },
-  { value: 'clickup_pm',         label: 'Project Manager', icon: <Wifi size={14} />,      proto: 2 },
-  { value: 'clickup_technician', label: 'QC Technician',   icon: <Wifi size={14} />,      proto: 2 },
+  { value: 'admin',               label: 'Admin',           icon: <Shield size={14} />,    proto: 1 },
+  { value: 'org_owner',           label: 'Org Owner',       icon: <Building2 size={14} />, proto: 1 },
+  { value: 'pm',                  label: 'Project Manager', icon: <Briefcase size={14} />, proto: 1 },
+  { value: 'qc_technician',       label: 'QC Technician',   icon: <Wrench size={14} />,    proto: 1 },
+  { value: 'qc_technician_2',     label: 'QC Technician',   icon: <Wrench size={14} />,    proto: 1 },
+  { value: 'clickup_admin',       label: 'Admin',           icon: <Wifi size={14} />,      proto: 2 },
+  { value: 'clickup_org_owner',   label: 'Org Owner',       icon: <Wifi size={14} />,      proto: 2 },
+  { value: 'clickup_pm',          label: 'Project Manager', icon: <Wifi size={14} />,      proto: 2 },
+  { value: 'clickup_technician',  label: 'QC Technician',   icon: <Wifi size={14} />,      proto: 2 },
 ]
 
 const PROTO1_DEFAULT: Role = 'admin'
-const PROTO2_DEFAULT: Role = 'clickup_pm'
+const PROTO2_DEFAULT: Role = 'clickup_admin'
 
 const ROLE_BADGE: Record<Role, string> = {
   admin:                'text-purple-400 bg-purple-400/10 border-purple-400/30',
@@ -23,28 +25,34 @@ const ROLE_BADGE: Record<Role, string> = {
   pm:                   'text-blue-400 bg-blue-400/10 border-blue-400/30',
   qc_technician:        'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
   qc_technician_2:      'text-teal-400 bg-teal-400/10 border-teal-400/30',
+  clickup_admin:        'text-violet-400 bg-violet-400/10 border-violet-400/30',
+  clickup_org_owner:    'text-violet-400 bg-violet-400/10 border-violet-400/30',
   clickup_pm:           'text-violet-400 bg-violet-400/10 border-violet-400/30',
   clickup_technician:   'text-violet-400 bg-violet-400/10 border-violet-400/30',
 }
 
 const USER_PERSONAS: Record<Role, { full: string; first: string }> = {
-  admin:                { full: 'Lucy Kien',   first: 'Lucy' },
-  org_owner:            { full: 'Sara Connor', first: 'Sara' },
-  pm:                   { full: 'Susan Smith', first: 'Susan' },
-  qc_technician:        { full: 'Matt Edrich', first: 'Matt' },
-  qc_technician_2:      { full: 'John Smith',  first: 'John' },
-  clickup_pm:           { full: 'Lucy Kien',   first: 'Lucy' },
-  clickup_technician:   { full: 'Matt Edrich', first: 'Matt' },
+  admin:               { full: 'Lucy Kien',      first: 'Lucy' },
+  org_owner:           { full: 'Sara Connor',    first: 'Sara' },
+  pm:                  { full: 'Susan Smith',    first: 'Susan' },
+  qc_technician:       { full: 'Mike McGuire',   first: 'Mike' },
+  qc_technician_2:     { full: 'John Smith',     first: 'John' },
+  clickup_admin:       { full: 'Pryce Valencia', first: 'Pryce' },
+  clickup_org_owner:   { full: 'Daniel Valencia', first: 'Daniel' },
+  clickup_pm:          { full: 'Lucy Kien',      first: 'Lucy' },
+  clickup_technician:  { full: 'Mike McGuire',   first: 'Mike' },
 }
 
 const ICON_COLOR: Record<Role, string> = {
-  admin:                'text-purple-400',
-  org_owner:            'text-amber-400',
-  pm:                   'text-blue-400',
-  qc_technician:        'text-emerald-400',
-  qc_technician_2:      'text-teal-400',
-  clickup_pm:           'text-violet-400',
-  clickup_technician:   'text-violet-400',
+  admin:               'text-purple-400',
+  org_owner:           'text-amber-400',
+  pm:                  'text-blue-400',
+  qc_technician:       'text-emerald-400',
+  qc_technician_2:     'text-teal-400',
+  clickup_admin:       'text-violet-400',
+  clickup_org_owner:   'text-violet-400',
+  clickup_pm:          'text-violet-400',
+  clickup_technician:  'text-violet-400',
 }
 
 const TopNav: React.FC = () => {
@@ -152,7 +160,7 @@ const TopNav: React.FC = () => {
             <div className="absolute right-0 top-full mt-1.5 w-56 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
               {roles.map((r) => {
                 const persona = USER_PERSONAS[r.value]
-                const isClickUp = r.value === 'clickup_pm' || r.value === 'clickup_technician'
+                const isClickUp = r.value.startsWith('clickup_')
                 return (
                   <button
                     key={r.value}
